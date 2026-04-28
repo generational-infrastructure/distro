@@ -45,7 +45,7 @@ in
     hardware.graphics.enable = lib.mkDefault true;
 
     services.llama-swap = {
-      listenAddress = "0.0.0.0";
+      listenAddress = lib.mkDefault "0.0.0.0";
       port = lib.mkDefault 8012;
       settings = {
         healthCheckTimeout = 3600;
