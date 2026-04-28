@@ -13,6 +13,12 @@
     inputs:
     inputs.blueprint {
       inherit inputs;
+      # NixOS modules/tests only make sense on Linux; keep blueprint from
+      # generating darwin checks that cannot evaluate nixosTest.
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
       nixpkgs.config.allowUnfree = true;
     };
 }

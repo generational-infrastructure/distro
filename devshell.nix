@@ -1,7 +1,9 @@
-{ pkgs }:
+{ perSystem, pkgs, ... }:
 pkgs.mkShell {
   # Add build dependencies
-  packages = [ ];
+  packages = [
+    perSystem.self.formatter
+  ];
 
   # Add environment variables
   env = { };

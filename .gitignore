@@ -1,6 +1,9 @@
 # direnv
 .direnv/
+.envrc.local
 
 # nix
 result
 result-*
+.flake-archive.json
+.cache/
