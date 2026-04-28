@@ -27,9 +27,9 @@ let
 
   llama-server = lib.getExe' cfg.llama-server-package "llama-server";
 
-  gemma4-gguf = pkgs.fetchurl {
-    url = "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf";
-    hash = "sha256-3/D/ukyQtAgtcCFNU86VBKKNTY2Zgnbcs7iIGmVsdCo=";
+  qwen25-05b-gguf = pkgs.fetchurl {
+    url = "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+    hash = "sha256-dKTajJ/bzRW9H20B1iFBDTHG/ACYb162h4JOe5PXqds=";
   };
 in
 {
@@ -51,8 +51,8 @@ in
         healthCheckTimeout = 3600;
         logToStdout = "both";
         models = {
-          "gemma4:e4b" = {
-            cmd = "${llama-server} -m ${gemma4-gguf} --port \${PORT}";
+          "qwen2.5:0.5b" = {
+            cmd = "${llama-server} -m ${qwen25-05b-gguf} --port \${PORT}";
           };
         };
       };

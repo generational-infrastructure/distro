@@ -42,7 +42,7 @@ in
 
     model = lib.mkOption {
       type = lib.types.str;
-      default = "gemma4:e4b";
+      default = "qwen2.5:0.5b";
       description = "Model name to request from the LLM server.";
     };
 
@@ -147,6 +147,36 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # models.json for pi provider discovery. Pi reads this separately
+    # from settings.json. The state dir is bind-mounted into the
+    # container, so a host-side symlink is visible inside.
+    systemd.tmpfiles.rules =
+      let
+        stateDir =
+          if cfg.instanceName == "default"
+          then "/var/lib/opencrow"
+          else "/var/lib/opencrow-${cfg.instanceName}";
+        modelsJson = pkgs.writeText "models-${cfg.instanceName}.json" (
+          builtins.toJSON {
+            providers.local = {
+              baseUrl = "${cfg.llmUrl}/v1";
+              api = "openai-completions";
+              apiKey = "dummy";
+              compat = {
+                supportsDeveloperRole = false;
+                supportsReasoningEffort = false;
+              };
+              models = [
+                { id = cfg.model; }
+              ];
+            };
+          }
+        );
+      in
+      [
+        "L+ ${stateDir}/pi-agent/models.json - - - - ${modelsJson}"
+      ];
+
     services.opencrow.instances.${cfg.instanceName} = {
       enable = true;
       inherit (cfg)
@@ -156,22 +186,8 @@ in
         extraPackages
         environmentFiles
         credentialFiles
+        piSettings
         ;
-
-      piSettings = {
-        providers.local = {
-          baseUrl = "${cfg.llmUrl}/v1";
-          api = "openai-completions";
-          apiKey = "dummy";
-          compat = {
-            supportsDeveloperRole = false;
-            supportsReasoningEffort = false;
-          };
-          models = [
-            { id = cfg.model; }
-          ];
-        };
-      } // cfg.piSettings;
 
       environment =
         {
