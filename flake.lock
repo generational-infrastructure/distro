@@ -37,10 +37,34 @@
         "type": "github"
       }
     },
+    "opencrow": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "treefmt-nix": [
+          "treefmt-nix"
+        ]
+      },
+      "locked": {
+        "lastModified": 1776009042,
+        "narHash": "sha256-V2Alx5Ls0ux1jyKw2NWYx7Qg66/zzkZqHOXc7WdSBFg=",
+        "owner": "pinpox",
+        "repo": "opencrow",
+        "rev": "18d9360ed38be5f04db463faf60ed3a650155bdc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pinpox",
+        "repo": "opencrow",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "blueprint": "blueprint",
         "nixpkgs": "nixpkgs",
+        "opencrow": "opencrow",
         "treefmt-nix": "treefmt-nix"
       }
     },

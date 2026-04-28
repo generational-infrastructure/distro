@@ -7,6 +7,9 @@
     blueprint.inputs.nixpkgs.follows = "nixpkgs";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
+    opencrow.url = "github:pinpox/opencrow";
+    opencrow.inputs.nixpkgs.follows = "nixpkgs";
+    opencrow.inputs.treefmt-nix.follows = "treefmt-nix";
   };
 
   outputs =
