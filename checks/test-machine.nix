@@ -1,7 +1,7 @@
 # NixOS VM test for the test-machine host.
 #
-# Headless verification of the wiring around niri, the noctalia nostr-chat
-# plugin, nostr-chatd bridge, strfry relay, and opencrow agent.
+# Headless verification of the wiring around niri, the noctalia
+# opencrow-chat plugin, opencrow socket backend, and llama-swap.
 #
 # We cannot validate rendered output (no GPU in the test runner). What we
 # DO verify:
@@ -9,19 +9,18 @@
 #   - the user manager (user@1000.service) comes up
 #   - niri.service activates and exposes a Wayland socket
 #   - noctalia-shell is spawned by niri
-#   - nostr-chatd plugin is symlinked into the test user's noctalia dir
-#   - strfry relay is listening
-#   - nostr-chatd user service starts and creates its unix socket
-#   - opencrow container comes up
-#   - a message sent through nostr-chatd reaches opencrow and a reply
-#     comes back on the same socket
+#   - opencrow-chat plugin is symlinked into the test user's noctalia dir
+#   - opencrow container comes up with socket backend
+#   - the chat socket is accessible on the host
+#   - a message sent through the socket reaches opencrow and a reply
+#     comes back
 #
 # Interactive validation of the shell happens in the GUI VM
 # (`nix build .#test-vm && ./result/bin/run-test-machine-vm`).
 { pkgs, inputs, ... }:
 
 let
-  testNostrChat = ./test-nostr-chat.py;
+  testChat = ./test-opencrow-chat.py;
 in
 pkgs.testers.runNixOSTest {
   name = "test-machine";
@@ -42,7 +41,7 @@ pkgs.testers.runNixOSTest {
         writableStore = true;
       };
 
-      # python3 is needed by the test script that verifies nostr message flow.
+      # python3 is needed by the test script that verifies message flow.
       environment.systemPackages = [ pkgs.python3 ];
     };
 
@@ -80,41 +79,35 @@ pkgs.testers.runNixOSTest {
               timeout=30,
           )
 
-      with subtest("nostr-chat plugin is symlinked"):
+      with subtest("opencrow-chat plugin is symlinked"):
           machine.wait_until_succeeds(
-              "test -L /home/test/.config/noctalia/plugins/nostr-chat",
+              "test -L /home/test/.config/noctalia/plugins/opencrow-chat",
               timeout=30,
           )
 
-      with subtest("strfry relay is listening"):
-          machine.wait_for_unit("strfry.service")
-          machine.wait_for_open_port(7777)
-
-      with subtest("nostr-chatd user service starts"):
-          machine.wait_until_succeeds(
-              "systemctl --user --machine=test@.host is-active nostr-chatd.service",
-              timeout=60,
-          )
-          machine.wait_for_file("/run/user/${uid}/nostr-chatd.sock", timeout=30)
-
       with subtest("opencrow container starts"):
-          machine.wait_for_unit("container@opencrow-nostr.service", timeout=120)
-          # Verify the opencrow service is running inside the container.
-          # `systemctl --machine=` reaches into the container without a TTY.
+          machine.wait_for_unit("container@opencrow.service", timeout=120)
           machine.wait_until_succeeds(
-              "systemctl --machine=opencrow-nostr is-active opencrow.service",
+              "systemctl --machine=opencrow is-active opencrow.service",
               timeout=60,
           )
-          # Dump opencrow logs for debugging.
           machine.execute(
-              "journalctl --machine=opencrow-nostr -u opencrow.service --no-pager -n 50"
+              "journalctl --machine=opencrow -u opencrow.service --no-pager -n 50"
           )
+
+      with subtest("chat socket is accessible"):
+          machine.wait_for_file("/run/opencrow-default/chat.sock", timeout=30)
+          # Socket symlink for noctalia plugin
+          machine.wait_until_succeeds(
+              "systemctl --user --machine=test@.host is-active opencrow-socket-link.service",
+              timeout=30,
+          )
+          machine.wait_for_file("/run/user/${uid}/opencrow-chat.sock", timeout=30)
 
       with subtest("send message and receive reply"):
-          # Copy the test script into the VM and run it.
-          machine.copy_from_host("${testNostrChat}", "/tmp/test-nostr-chat.py")
+          machine.copy_from_host("${testChat}", "/tmp/test-chat.py")
           machine.succeed(
-              "python3 /tmp/test-nostr-chat.py /run/user/${uid}/nostr-chatd.sock"
+              "python3 /tmp/test-chat.py /run/user/${uid}/opencrow-chat.sock"
           )
     '';
 }

@@ -5,7 +5,7 @@ import qs.Commons
 import qs.Services.UI
 
 // Thin view layer. All state — history, dedup, outbox, reconnect —
-// lives in nostr-chatd. A single persistent unix socket carries NDJSON
+// lives in opencrow. A single persistent unix socket carries NDJSON
 // both ways: we write commands, the daemon writes events. On connect
 // (and every reconnect) we send a replay; that's the whole resync
 // protocol.
@@ -25,7 +25,7 @@ Item {
   // (and thus the daemon) can't run either, so no fallback needed.
   // Quickshell.env returns QVariant — String() avoids "undefined/…".
   readonly property string sockPath:
-    String(Quickshell.env("XDG_RUNTIME_DIR")) + "/nostr-chatd.sock"
+    String(Quickshell.env("XDG_RUNTIME_DIR")) + "/opencrow-chat.sock"
 
   // Mirror of the daemon's typed enums. QML has no real enum type for
   // dynamic JS, but a frozen object at least centralises the strings
@@ -215,7 +215,7 @@ Item {
       // spam the notification stack.
       chat.patch(ev.target, { tries: ev.tries });
       if (ev.tries === 1)
-        ToastService.showError((chat.peerName || "nostr-chat") + ": send failed, retrying");
+        ToastService.showError((chat.peerName || "opencrow-chat") + ": send failed, retrying");
       break;
 
     case root.ev.ack:
@@ -229,14 +229,14 @@ Item {
     case root.ev.error:
       chat.lastError = ev.text;
       errorTimer.restart();
-      ToastService.showError((chat.peerName || "nostr-chat") + ": " + ev.text);
+      ToastService.showError((chat.peerName || "opencrow-chat") + ": " + ev.text);
       break;
     }
   }
 
   property real _lastTap: 0
   IpcHandler {
-    target: "plugin:nostr-chat"
+    target: "plugin:opencrow-chat"
 
     function tap() {
       const now = Date.now();

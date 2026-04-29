@@ -431,7 +431,7 @@ Item {
       id: pasteImage
       property string tmp: ""
       command: ["sh", "-c",
-        `f="$XDG_RUNTIME_DIR/nostr-chat-paste-$$"; ` +
+        `f="$XDG_RUNTIME_DIR/opencrow-chat-paste-$$"; ` +
         `wl-paste --type image > "$f" && printf %s "$f"`]
       stdout: StdioCollector { onStreamFinished: pasteImage.tmp = text }
       onExited: (code) => { if (code === 0 && tmp) chat?.sendFile(tmp, true); tmp = ""; }
