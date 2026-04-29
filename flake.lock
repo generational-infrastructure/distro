@@ -199,12 +199,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1777473749,
-        "narHash": "sha256-BsQCPY2koxaGahPHAd2eo2KgTAA0Rlh9tFkzEmNdh0c=",
-        "owner": "pinpox",
-        "repo": "opencrow",
-        "rev": "2815f11f22261888f88026582486146ac652e0c7",
-        "type": "github"
+        "lastModified": 1777500054,
+        "narHash": "sha256-q6ohGI36GnS3RnM6cWSfBLxCkjpI483bgmN22ubyaXY=",
+        "path": "/home/pinpox/code/github.com/pinpox/opencrow",
+        "type": "path"
       },
       "original": {
         "owner": "pinpox",

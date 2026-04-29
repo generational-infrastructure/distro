@@ -32,7 +32,7 @@ Item {
   // so a rename is one grep instead of six.
   readonly property var ev: Object.freeze({
     status: "status", msg: "msg", sent: "sent", retry: "retry",
-    ack: "ack", img: "img", error: "error", typing: "typing",
+    ack: "ack", img: "img", error: "error", typing: "typing", delta: "delta",
   })
   readonly property var cmd: Object.freeze({
     send: "send", sendFile: "send-file", replay: "replay",
@@ -192,6 +192,8 @@ Item {
         from: m.dir === "out" ? "me" : "peer",
       };
       let arr = chat.messages.slice();
+      // Remove any streaming placeholder — the final message replaces it.
+      if (m.dir === "in") arr = arr.filter(x => x.state !== "streaming");
       let i = arr.length;
       while (i > 0 && arr[i-1].ts > entry.ts) i--;
       // Skip if already mirrored (replay after a live insert).
@@ -240,6 +242,29 @@ Item {
       chat.typing = true;
       typingTimer.restart();
       break;
+
+    case root.ev.delta: {
+      // Streaming text delta — append to existing message or create one.
+      const id = ev.target;
+      const delta = ev.text || "";
+      if (!delta) break;
+      let arr = chat.messages.slice();
+      const idx = arr.findIndex(x => x.id === id);
+      if (idx >= 0) {
+        // Append delta to existing streaming message.
+        arr[idx] = Object.assign({}, arr[idx], { text: arr[idx].text + delta });
+      } else {
+        // First delta — create a new streaming entry.
+        arr.push({
+          id: id, text: delta, ts: Date.now(), ack: "",
+          image: "", replyTo: "", state: "streaming", tries: 0,
+          from: "peer",
+        });
+      }
+      chat.messages = arr;
+      chat.typing = false;  // Replace typing indicator with streaming text.
+      break;
+    }
 
     case root.ev.error:
       chat.lastError = ev.text;

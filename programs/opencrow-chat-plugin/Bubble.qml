@@ -63,9 +63,9 @@ Item {
     id: bubble
     anchors.left:  row.mine ? undefined : parent.left
     anchors.right: row.mine ? parent.right : undefined
-    // Image/quote bubbles snap to the cap; plain text shrinks to fit
-    // so short replies don't stretch edge-to-edge.
-    width: ((msg.image ?? "") !== "" || (msg.replyTo ?? "") !== "")
+    // Image/quote/streaming bubbles snap to the cap; plain text shrinks
+    // to fit so short replies don't stretch edge-to-edge.
+    width: ((msg.image ?? "") !== "" || (msg.replyTo ?? "") !== "" || (msg.state ?? "") === "streaming")
       ? row.width * 0.85
       : Math.min(msgText.implicitWidth + Style.marginM * 2, row.width * 0.85)
     implicitHeight: col.implicitHeight + Style.marginM * 2
