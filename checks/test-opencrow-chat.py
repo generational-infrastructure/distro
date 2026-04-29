@@ -8,7 +8,11 @@ Turn 2: ask "What color is the sky?", expect a reply containing "blue".
 
 Usage: test-opencrow-chat.py <socket_path>
 """
-import json, socket, sys, time
+
+import json
+import socket
+import sys
+import time
 
 sock_path = sys.argv[1]
 

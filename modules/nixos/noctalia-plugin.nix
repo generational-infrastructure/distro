@@ -7,6 +7,6 @@
 {
   imports = [
     inputs.opencrow.nixosModules.default
-    ./opencrow.nix
+    (import ./opencrow.nix { inherit inputs; })
   ];
 }

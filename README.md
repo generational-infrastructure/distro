@@ -36,7 +36,6 @@ your flake inputs:
 
   outputs = { nixpkgs, distro, ... }: {
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
-      specialArgs = { inputs = distro.inputs // { distro = distro; }; };
       modules = [
         # Pick ONE of the three modules below
         distro.nixosModules.distro          # Full desktop
@@ -56,7 +55,7 @@ noctalia shell bar with chat widget, opencrow AI agent, and local LLM server.
 
 ```nix
 # configuration.nix
-{ config, inputs, ... }:
+{ config, ... }:
 {
   # Auto-login into niri (adjust to your display manager)
   services.greetd = {
@@ -71,7 +70,6 @@ noctalia shell bar with chat widget, opencrow AI agent, and local LLM server.
   services.opencrow-local = {
     enable = true;
     noctaliaPlugin = true;
-    piPackage = inputs.distro.inputs.llm-agents.packages.x86_64-linux.pi;
   };
 
   # Local LLM server
@@ -93,12 +91,11 @@ You keep your compositor.
 
 ```nix
 # configuration.nix
-{ inputs, ... }:
+{ ... }:
 {
   services.opencrow-local = {
     enable = true;
     noctaliaPlugin = true;
-    piPackage = inputs.distro.inputs.llm-agents.packages.x86_64-linux.pi;
   };
 
   services.llama-swap.enable = true;
@@ -126,12 +123,11 @@ chat widget and agent backend.
 
 ```nix
 # configuration.nix
-{ inputs, ... }:
+{ ... }:
 {
   services.opencrow-local = {
     enable = true;
     noctaliaPlugin = true;
-    piPackage = inputs.distro.inputs.llm-agents.packages.x86_64-linux.pi;
   };
 
   services.llama-swap.enable = true;

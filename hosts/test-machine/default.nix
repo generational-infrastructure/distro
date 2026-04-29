@@ -2,7 +2,11 @@
 #
 # Wires the shared module list + host config into a NixOS system.
 # Blueprint calls this with { flake, inputs, hostName }.
-{ inputs, flake, hostName }:
+{
+  inputs,
+  flake,
+  hostName,
+}:
 {
   class = "nixos";
   value = inputs.nixpkgs.lib.nixosSystem {
@@ -11,6 +15,7 @@
     };
     modules = [
       { nixpkgs.hostPlatform = "x86_64-linux"; }
-    ] ++ import ./modules.nix;
+    ]
+    ++ import ./modules.nix;
   };
 }
