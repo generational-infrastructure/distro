@@ -25,6 +25,8 @@ let
       --replace-fail 'spawn-at-startup "waybar"' \
                      'spawn-at-startup "noctalia-shell"'
     sed -i '/^input {$/a\    mod-key "Alt"' $out
+    # Mod+N toggles the nostr-chat panel in noctalia.
+    sed -i '/^binds {$/a\    Mod+N hotkey-overlay-title="Toggle Nostr Chat" { spawn "noctalia-shell" "ipc" "call" "plugin:nostr-chat" "toggle"; }' $out
   '';
 in
 {

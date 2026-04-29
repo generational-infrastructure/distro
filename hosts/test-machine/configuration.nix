@@ -65,7 +65,6 @@ in
   services.opencrow-nostr = {
     enable = true;
     relays = [ relay ];
-    model = "qwen2.5:0.5b";
     llmUrl = "http://127.0.0.1:8012";
     piPackage = inputs.llm-agents.packages.x86_64-linux.pi;
     environmentFiles = [ "/etc/nostr-test-bot.env" ];
