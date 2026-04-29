@@ -48,7 +48,7 @@ pkgs.testers.runNixOSTest {
   testScript =
     { nodes, ... }:
     let
-      uid = toString nodes.test-machine.config.users.users.test.uid;
+      uid = toString nodes.test-machine.users.users.test.uid;
     in
     ''
       machine.wait_for_unit("multi-user.target")

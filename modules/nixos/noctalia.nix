@@ -50,7 +50,7 @@ in
 
   config = {
     environment.systemPackages = [
-      inputs.noctalia-shell.packages.${pkgs.system}.default
+      inputs.noctalia-shell.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
 
     # Seed per-user noctalia config directories and files.
