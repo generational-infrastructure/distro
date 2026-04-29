@@ -2,7 +2,7 @@
 #
 # Pure config — no module imports. Modules come from distro.nix,
 # wired in by default.nix (blueprint) or the test harness.
-{ config, inputs, ... }:
+{ config, ... }:
 
 {
   networking.hostName = "test-machine";
@@ -32,7 +32,6 @@
     enable = true;
     model = "qwen2.5:0.5b";
     llmUrl = "http://127.0.0.1:8012";
-    piPackage = inputs.llm-agents.packages.x86_64-linux.pi;
     socketName = "Test Bot";
     noctaliaPlugin = true;
   };

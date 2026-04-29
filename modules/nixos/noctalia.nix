@@ -8,36 +8,46 @@
 #
 # Uses systemd.user.tmpfiles so every user session gets the config
 # automatically — no explicit user list needed.
-{ inputs, config, lib, pkgs, ... }:
+{ inputs }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
-  pluginsJson = pkgs.writeText "noctalia-plugins.json" (builtins.toJSON {
-    version = 2;
-    states.opencrow-chat.enabled = true;
-  });
+  pluginsJson = pkgs.writeText "noctalia-plugins.json" (
+    builtins.toJSON {
+      version = 2;
+      states.opencrow-chat.enabled = true;
+    }
+  );
 
-  settingsJson = pkgs.writeText "noctalia-settings.json" (builtins.toJSON {
-    bar.widgets = {
-      left = [
-        { id = "Launcher"; }
-        { id = "Clock"; }
-        { id = "SystemMonitor"; }
-        { id = "ActiveWindow"; }
-        { id = "MediaMini"; }
-      ];
-      center = [
-        { id = "Workspace"; }
-        { id = "plugin:opencrow-chat"; }
-      ];
-      right = [
-        { id = "Tray"; }
-        { id = "NotificationHistory"; }
-        { id = "Battery"; }
-        { id = "Volume"; }
-        { id = "Brightness"; }
-        { id = "ControlCenter"; }
-      ];
-    };
-  });
+  settingsJson = pkgs.writeText "noctalia-settings.json" (
+    builtins.toJSON {
+      bar.widgets = {
+        left = [
+          { id = "Launcher"; }
+          { id = "Clock"; }
+          { id = "SystemMonitor"; }
+          { id = "ActiveWindow"; }
+          { id = "MediaMini"; }
+        ];
+        center = [
+          { id = "Workspace"; }
+          { id = "plugin:opencrow-chat"; }
+        ];
+        right = [
+          { id = "Tray"; }
+          { id = "NotificationHistory"; }
+          { id = "Battery"; }
+          { id = "Volume"; }
+          { id = "Brightness"; }
+          { id = "ControlCenter"; }
+        ];
+      };
+    }
+  );
 in
 {
   config = {

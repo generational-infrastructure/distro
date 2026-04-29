@@ -1,14 +1,15 @@
 # Distro module bundle.
 #
 # Single import that pulls in every NixOS module this distro provides.
-# Requires `inputs` in module args (specialArgs or _module.args).
+# The outer function receives blueprint's publisherArgs at export time,
+# so consumers do not need to pass `inputs` via specialArgs.
 { inputs, ... }:
 {
   imports = [
     inputs.opencrow.nixosModules.default
     ./niri.nix
-    ./noctalia.nix
-    ./opencrow.nix
+    (import ./noctalia.nix { inherit inputs; })
+    (import ./opencrow.nix { inherit inputs; })
     ./llama-swap.nix
     ./vm-debug.nix
   ];

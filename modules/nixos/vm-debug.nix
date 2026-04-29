@@ -6,7 +6,7 @@
 #   - virtio-vga-gl + GTK GL display so niri can render hardware-accelerated
 #   - GTK menubar hidden so Alt+letter combos reach the guest compositor
 #   - SSH on host:2222 → guest:22 for runtime inspection
-{ ... }:
+_:
 {
   virtualisation.vmVariant = {
     virtualisation.memorySize = 8192;

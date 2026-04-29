@@ -5,6 +5,7 @@
 # - Ollama provider with models.json auto-generation
 # - Noctalia plugin installation (optional)
 # The upstream opencrow NixOS module is imported by distro.nix.
+{ inputs }:
 {
   config,
   lib,
@@ -70,6 +71,8 @@ in
 
     piPackage = lib.mkOption {
       type = lib.types.package;
+      default = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.pi;
+      defaultText = lib.literalExpression "inputs.llm-agents.packages.\${pkgs.stdenv.hostPlatform.system}.pi";
       description = "The pi coding agent package.";
     };
 
@@ -179,17 +182,16 @@ in
         isReadOnly = false;
       };
 
-      environment =
-        {
-          OPENCROW_BACKEND = "socket";
-          OPENCROW_SOCKET_PATH = "/run/opencrow-sock/chat.sock";
-          OPENCROW_SOCKET_NAME = cfg.socketName;
-          OPENCROW_PI_PROVIDER = "local";
-          OPENCROW_PI_MODEL = cfg.model;
-          OPENCROW_PI_IDLE_TIMEOUT = "1h";
-          OPENCROW_LOG_LEVEL = "info";
-        }
-        // cfg.extraEnvironment;
+      environment = {
+        OPENCROW_BACKEND = "socket";
+        OPENCROW_SOCKET_PATH = "/run/opencrow-sock/chat.sock";
+        OPENCROW_SOCKET_NAME = cfg.socketName;
+        OPENCROW_PI_PROVIDER = "local";
+        OPENCROW_PI_MODEL = cfg.model;
+        OPENCROW_PI_IDLE_TIMEOUT = "1h";
+        OPENCROW_LOG_LEVEL = "info";
+      }
+      // cfg.extraEnvironment;
     };
   };
 }

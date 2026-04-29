@@ -7,7 +7,7 @@
 {
   imports = [
     inputs.opencrow.nixosModules.default
-    ./noctalia.nix
-    ./opencrow.nix
+    (import ./noctalia.nix { inherit inputs; })
+    (import ./opencrow.nix { inherit inputs; })
   ];
 }
