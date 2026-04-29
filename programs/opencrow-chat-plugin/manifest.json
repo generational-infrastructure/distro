@@ -1,11 +1,11 @@
 {
-  "id": "nostr-chat",
+  "id": "opencrow-chat",
   "name": "Nostr Chat",
   "version": "0.2.0",
   "author": "Jörg Thalheim",
   "official": false,
   "license": "MIT",
-  "description": "Chat panel for a NIP-17 DM peer (bot or human) via the nostr-chatd daemon",
+  "description": "Chat panel for opencrow over a local UNIX socket",
   "tags": ["Bar", "Panel", "Network", "AI"],
   "minNoctaliaVersion": "4.5.0",
   "entryPoints": {

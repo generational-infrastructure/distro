@@ -1,7 +1,7 @@
 # Noctalia Wayland desktop shell.
 #
 # Installs noctalia-shell and seeds per-user configuration so the
-# nostr-chat bar widget and plugin are enabled out of the box.
+# opencrow-chat bar widget and plugin are enabled out of the box.
 #
 # plugins.json  — L+ (forced symlink, always nix-managed)
 # settings.json — C  (copy-if-absent, user edits preserved)
@@ -11,7 +11,7 @@ let
 
   pluginsJson = pkgs.writeText "noctalia-plugins.json" (builtins.toJSON {
     version = 2;
-    states.nostr-chat.enabled = true;
+    states.opencrow-chat.enabled = true;
   });
 
   settingsJson = pkgs.writeText "noctalia-settings.json" (builtins.toJSON {
@@ -25,7 +25,7 @@ let
       ];
       center = [
         { id = "Workspace"; }
-        { id = "plugin:nostr-chat"; }
+        { id = "plugin:opencrow-chat"; }
       ];
       right = [
         { id = "Tray"; }
@@ -64,7 +64,7 @@ in
         # are enabled. Noctalia reloads on atomic replacement.
         "L+ ${home}/.config/noctalia/plugins.json - - - - ${pluginsJson}"
         # settings.json: copy-if-absent — seeds the default bar layout
-        # with nostr-chat widget on first boot; user edits persist.
+        # with opencrow-chat widget on first boot; user edits persist.
         "C ${home}/.config/noctalia/settings.json 0644 ${user} users - ${settingsJson}"
       ]) cfg.users
     );

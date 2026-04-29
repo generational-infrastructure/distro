@@ -1,11 +1,9 @@
-# Opinionated opencrow wrapper for nostr backend + local Ollama LLM.
+# Opinionated opencrow wrapper for local use with socket backend + Ollama LLM.
 #
 # Wraps the upstream services.opencrow NixOS module, providing:
-# - Nostr backend as default
+# - Socket backend (local UNIX socket, no relay/keys needed)
 # - Ollama provider with models.json auto-generation
-# - Sensible defaults for relays, timeouts, and logging
-# Requires `inputs` in module args (specialArgs or _module.args).
-#
+# - Noctalia plugin installation (optional)
 # The upstream opencrow NixOS module is imported by distro.nix.
 {
   config,
@@ -15,16 +13,36 @@
 }:
 
 let
-  cfg = config.services.opencrow-nostr;
+  cfg = config.services.opencrow-local;
+
+  stateDir = "/var/lib/opencrow-${cfg.instanceName}";
+
+  modelsJson = pkgs.writeText "models-${cfg.instanceName}.json" (
+    builtins.toJSON {
+      providers.local = {
+        baseUrl = "${cfg.llmUrl}/v1";
+        api = "openai-completions";
+        apiKey = "dummy";
+        compat = {
+          supportsDeveloperRole = false;
+          supportsReasoningEffort = false;
+        };
+        models = [
+          { id = cfg.model; }
+        ];
+      };
+    }
+  );
+
+  pluginDir = ../../programs/opencrow-chat-plugin;
 in
 {
-
-  options.services.opencrow-nostr = {
-    enable = lib.mkEnableOption "opencrow with nostr backend and local Ollama LLM";
+  options.services.opencrow-local = {
+    enable = lib.mkEnableOption "opencrow with local socket backend and Ollama LLM";
 
     instanceName = lib.mkOption {
       type = lib.types.str;
-      default = "nostr";
+      default = "local";
       description = ''
         Name for the opencrow instance. The upstream module prefixes this
         with "opencrow-", so e.g. "geninf" yields container opencrow-geninf.
@@ -44,73 +62,27 @@ in
       description = "Model name to request from the LLM server.";
     };
 
-    relays = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      description = "Nostr relay WebSocket URLs.";
+    socketName = lib.mkOption {
+      type = lib.types.str;
+      default = "OpenCrow";
+      description = "Display name shown in status events.";
     };
 
-    dmRelays = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ ];
-      description = "Nostr DM relay URLs (NIP-17). Falls back to relays if empty.";
-    };
-
-    blossomServers = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ ];
-      description = "Blossom server URLs for encrypted file uploads.";
-    };
-
-    allowedUsers = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ ];
-      description = "npubs or hex pubkeys allowed to interact. Empty allows all.";
-    };
-
-    profile = {
-      name = lib.mkOption {
-        type = lib.types.str;
-        default = "";
-        description = "Bot profile name (NIP-01 kind 0).";
-      };
-      displayName = lib.mkOption {
-        type = lib.types.str;
-        default = "";
-        description = "Bot profile display name.";
-      };
-      about = lib.mkOption {
-        type = lib.types.str;
-        default = "";
-        description = "Bot profile bio.";
-      };
-      picture = lib.mkOption {
-        type = lib.types.str;
-        default = "";
-        description = "Bot profile picture URL.";
-      };
-    };
-
-    privateKeyFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
-      default = null;
-      description = "Path to file containing nostr private key (hex or nsec). Alternative: use environmentFiles.";
+    piPackage = lib.mkOption {
+      type = lib.types.package;
+      description = "The pi coding agent package.";
     };
 
     environmentFiles = lib.mkOption {
       type = lib.types.listOf lib.types.path;
       default = [ ];
-      description = "Environment files with secrets (OPENCROW_NOSTR_PRIVATE_KEY, API keys, etc.).";
+      description = "Environment files with secrets.";
     };
 
     credentialFiles = lib.mkOption {
       type = lib.types.attrsOf lib.types.path;
       default = { };
       description = "Systemd credential files passed to the container.";
-    };
-
-    piPackage = lib.mkOption {
-      type = lib.types.package;
-      description = "The pi coding agent package.";
     };
 
     extraEnvironment = lib.mkOption {
@@ -140,40 +112,70 @@ in
     piSettings = lib.mkOption {
       type = lib.types.attrsOf lib.types.anything;
       default = { };
-      description = "Extra keys for pi's settings.json (merged with auto-generated provider config).";
+      description = "Extra keys for pi's settings.json.";
+    };
+
+    noctaliaPlugin = lib.mkEnableOption "noctalia opencrow-chat panel plugin" // {
+      description = ''
+        Symlink the opencrow-chat QML plugin into each user's
+        ~/.config/noctalia/plugins/opencrow-chat directory.
+        Enable the plugin in noctalia's UI on first use.
+      '';
+    };
+
+    noctaliaPluginUsers = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Users to install the noctalia plugin for.";
+      example = [ "pinpox" ];
     };
   };
 
   config = lib.mkIf cfg.enable {
-    # models.json for pi provider discovery. Pi reads this separately
-    # from settings.json. The state dir is bind-mounted into the
-    # container, so a host-side symlink is visible inside.
+    # models.json for pi provider discovery + noctalia socket symlink.
     systemd.tmpfiles.rules =
       let
-        stateDir =
-          if cfg.instanceName == "default"
-          then "/var/lib/opencrow"
-          else "/var/lib/opencrow-${cfg.instanceName}";
-        modelsJson = pkgs.writeText "models-${cfg.instanceName}.json" (
-          builtins.toJSON {
-            providers.local = {
-              baseUrl = "${cfg.llmUrl}/v1";
-              api = "openai-completions";
-              apiKey = "dummy";
-              compat = {
-                supportsDeveloperRole = false;
-                supportsReasoningEffort = false;
-              };
-              models = [
-                { id = cfg.model; }
-              ];
-            };
-          }
-        );
+        socketDir = "/run/opencrow-${cfg.instanceName}";
       in
       [
         "L+ ${stateDir}/pi-agent/models.json - - - - ${modelsJson}"
-      ];
+        # Host-accessible directory for the chat socket. The state dir
+        # itself is 0750 (owned by the container's dynamic user), so we
+        # put the socket in a separate world-accessible run dir and
+        # bind-mount it into the container.
+        "d ${socketDir} 0777 root root -"
+      ]
+      ++ lib.optionals (cfg.noctaliaPlugin && cfg.noctaliaPluginUsers != [ ]) (
+        lib.concatMap (
+          user:
+          let
+            home = config.users.users.${user}.home;
+            dest = "${home}/.config/noctalia/plugins/opencrow-chat";
+          in
+          [
+            "d ${home}/.config 0755 ${user} users -"
+            "d ${home}/.config/noctalia 0755 ${user} users -"
+            "d ${home}/.config/noctalia/plugins 0755 ${user} users -"
+            "L+ ${dest} - - - - ${pluginDir}"
+          ]
+        ) cfg.noctaliaPluginUsers
+      );
+
+    # Symlink opencrow's socket to where the noctalia plugin expects it.
+    # Must run as a user service since XDG_RUNTIME_DIR is per-user.
+    systemd.user.services.opencrow-socket-link = lib.mkIf cfg.noctaliaPlugin {
+      description = "Symlink opencrow chat socket for noctalia plugin";
+      after = [ "graphical-session.target" ];
+      wantedBy = [ "graphical-session.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = pkgs.writeShellScript "link-opencrow-socket" ''
+          ln -sf /run/opencrow-${cfg.instanceName}/chat.sock "$XDG_RUNTIME_DIR/opencrow-chat.sock"
+        '';
+        ExecStop = "${pkgs.coreutils}/bin/rm -f %t/opencrow-chat.sock";
+      };
+    };
 
     services.opencrow.instances.${cfg.instanceName} = {
       enable = true;
@@ -187,31 +189,22 @@ in
         piSettings
         ;
 
+      # Bind-mount the host socket dir into the container so opencrow
+      # can create the socket and the host user can connect to it.
+      extraBindMounts."/run/opencrow-sock" = {
+        hostPath = "/run/opencrow-${cfg.instanceName}";
+        isReadOnly = false;
+      };
+
       environment =
         {
-          OPENCROW_BACKEND = "nostr";
+          OPENCROW_BACKEND = "socket";
+          OPENCROW_SOCKET_PATH = "/run/opencrow-sock/chat.sock";
+          OPENCROW_SOCKET_NAME = cfg.socketName;
           OPENCROW_PI_PROVIDER = "local";
           OPENCROW_PI_MODEL = cfg.model;
           OPENCROW_PI_IDLE_TIMEOUT = "1h";
           OPENCROW_LOG_LEVEL = "info";
-
-          OPENCROW_NOSTR_RELAYS = lib.concatStringsSep "," cfg.relays;
-          OPENCROW_NOSTR_NAME = cfg.profile.name;
-          OPENCROW_NOSTR_DISPLAY_NAME = cfg.profile.displayName;
-          OPENCROW_NOSTR_ABOUT = cfg.profile.about;
-          OPENCROW_NOSTR_PICTURE = cfg.profile.picture;
-        }
-        // lib.optionalAttrs (cfg.dmRelays != [ ]) {
-          OPENCROW_NOSTR_DM_RELAYS = lib.concatStringsSep "," cfg.dmRelays;
-        }
-        // lib.optionalAttrs (cfg.blossomServers != [ ]) {
-          OPENCROW_NOSTR_BLOSSOM_SERVERS = lib.concatStringsSep "," cfg.blossomServers;
-        }
-        // lib.optionalAttrs (cfg.allowedUsers != [ ]) {
-          OPENCROW_NOSTR_ALLOWED_USERS = lib.concatStringsSep "," cfg.allowedUsers;
-        }
-        // lib.optionalAttrs (cfg.privateKeyFile != null) {
-          OPENCROW_NOSTR_PRIVATE_KEY_FILE = toString cfg.privateKeyFile;
         }
         // cfg.extraEnvironment;
     };

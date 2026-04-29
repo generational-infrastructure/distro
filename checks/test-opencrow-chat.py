@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-Drive a two-turn conversation through nostr-chatd's unix socket and
-verify the full noctalia plugin → nostr-chatd → strfry → opencrow →
-pi → reply round trip.
+Drive a two-turn conversation through opencrow's chat socket and verify
+the full noctalia plugin → opencrow (socket) → pi → reply round trip.
 
 Turn 1: greet, expect any non-empty reply.
 Turn 2: ask "What color is the sky?", expect a reply containing "blue".
 
-Usage: test-nostr-chat.py <socket_path>
+Usage: test-opencrow-chat.py <socket_path>
 """
 import json, socket, sys, time
 
@@ -21,7 +20,7 @@ for _ in range(50):
     except OSError:
         time.sleep(0.2)
 else:
-    sys.exit("could not connect to nostr-chatd socket")
+    sys.exit("could not connect to chat socket")
 
 # Drain status/history events with a fresh replay.
 s.sendall(json.dumps({"cmd": "replay", "n": 50}).encode() + b"\n")
