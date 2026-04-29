@@ -18,6 +18,12 @@ let
   cfg = config.services.nostr-chatd;
   # Flake source contains the QML plugin at /nostr-chat
   pluginDir = "${inputs.noctalia-plugins}/nostr-chat";
+  # Seed plugins.json so nostr-chat is enabled on first boot.
+  # Uses tmpfiles "C" (copy-if-absent) so user edits persist.
+  pluginsJson = pkgs.writeText "noctalia-plugins.json" (builtins.toJSON {
+    version = 2;
+    states.nostr-chat.enabled = true;
+  });
 in
 {
   options.services.nostr-chatd = {
@@ -96,6 +102,9 @@ in
         "d ${home}/.config/noctalia 0755 ${user} users -"
         "d ${home}/.config/noctalia/plugins 0755 ${user} users -"
         "L+ ${dest} - - - - ${pluginDir}"
+        # Seed plugins.json with nostr-chat enabled. "C" = copy only if
+        # the file doesn't exist yet, so user edits are preserved.
+        "C ${home}/.config/noctalia/plugins.json 0644 ${user} users - ${pluginsJson}"
       ]) cfg.noctaliaPluginUsers
     );
 

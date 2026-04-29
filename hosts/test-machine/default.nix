@@ -1,7 +1,7 @@
 # Blueprint entry point for the test-machine host.
 #
-# Wires distro.nix (module bundle) + configuration.nix (host config)
-# into a NixOS system. Blueprint calls this with { flake, inputs, hostName }.
+# Wires the shared module list + host config into a NixOS system.
+# Blueprint calls this with { flake, inputs, hostName }.
 { inputs, flake, hostName }:
 {
   class = "nixos";
@@ -11,8 +11,6 @@
     };
     modules = [
       { nixpkgs.hostPlatform = "x86_64-linux"; }
-      ../../modules/nixos/distro.nix
-      ./configuration.nix
-    ];
+    ] ++ import ./modules.nix;
   };
 }

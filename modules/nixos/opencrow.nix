@@ -40,7 +40,7 @@ in
 
     model = lib.mkOption {
       type = lib.types.str;
-      default = "qwen2.5:0.5b";
+      default = "gemma-4:e2b";
       description = "Model name to request from the LLM server.";
     };
 
