@@ -5,10 +5,11 @@
 #
 # plugins.json  — L+ (forced symlink, always nix-managed)
 # settings.json — C  (copy-if-absent, user edits preserved)
+#
+# Uses systemd.user.tmpfiles so every user session gets the config
+# automatically — no explicit user list needed.
 { inputs, config, lib, pkgs, ... }:
 let
-  cfg = config.services.noctalia;
-
   pluginsJson = pkgs.writeText "noctalia-plugins.json" (builtins.toJSON {
     version = 2;
     states.opencrow-chat.enabled = true;
@@ -39,34 +40,21 @@ let
   });
 in
 {
-  options.services.noctalia = {
-    users = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ ];
-      description = "Users to provision noctalia configuration for.";
-      example = [ "alice" ];
-    };
-  };
-
   config = {
     environment.systemPackages = [
       inputs.noctalia-shell.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
 
-    # Seed per-user noctalia config directories and files.
-    systemd.tmpfiles.rules = lib.optionals (cfg.users != [ ]) (
-      lib.concatMap (user: let
-        home = config.users.users.${user}.home;
-      in [
-        "d ${home}/.config 0755 ${user} users -"
-        "d ${home}/.config/noctalia 0755 ${user} users -"
-        # plugins.json: forced symlink — we always control which plugins
-        # are enabled. Noctalia reloads on atomic replacement.
-        "L+ ${home}/.config/noctalia/plugins.json - - - - ${pluginsJson}"
-        # settings.json: copy-if-absent — seeds the default bar layout
-        # with opencrow-chat widget on first boot; user edits persist.
-        "C ${home}/.config/noctalia/settings.json 0644 ${user} users - ${settingsJson}"
-      ]) cfg.users
-    );
+    # Seed noctalia config for every user session.
+    systemd.user.tmpfiles.rules = [
+      "d %h/.config 0755 - - -"
+      "d %h/.config/noctalia 0755 - - -"
+      # plugins.json: forced symlink — we always control which plugins
+      # are enabled. Noctalia reloads on atomic replacement.
+      "L+ %h/.config/noctalia/plugins.json - - - - ${pluginsJson}"
+      # settings.json: copy-if-absent — seeds the default bar layout
+      # with opencrow-chat widget on first boot; user edits persist.
+      "C %h/.config/noctalia/settings.json 0644 - - - ${settingsJson}"
+    ];
   };
 }

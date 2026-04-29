@@ -119,15 +119,7 @@ in
       description = ''
         Symlink the opencrow-chat QML plugin into each user's
         ~/.config/noctalia/plugins/opencrow-chat directory.
-        Enable the plugin in noctalia's UI on first use.
       '';
-    };
-
-    noctaliaPluginUsers = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ ];
-      description = "Users to install the noctalia plugin for.";
-      example = [ "pinpox" ];
     };
   };
 
@@ -144,22 +136,13 @@ in
         # put the socket in a separate world-accessible run dir and
         # bind-mount it into the container.
         "d ${socketDir} 0777 root root -"
-      ]
-      ++ lib.optionals (cfg.noctaliaPlugin && cfg.noctaliaPluginUsers != [ ]) (
-        lib.concatMap (
-          user:
-          let
-            home = config.users.users.${user}.home;
-            dest = "${home}/.config/noctalia/plugins/opencrow-chat";
-          in
-          [
-            "d ${home}/.config 0755 ${user} users -"
-            "d ${home}/.config/noctalia 0755 ${user} users -"
-            "d ${home}/.config/noctalia/plugins 0755 ${user} users -"
-            "L+ ${dest} - - - - ${pluginDir}"
-          ]
-        ) cfg.noctaliaPluginUsers
-      );
+      ];
+
+    # Plugin symlink for every user session.
+    systemd.user.tmpfiles.rules = lib.optionals cfg.noctaliaPlugin [
+      "d %h/.config/noctalia/plugins 0755 - - -"
+      "L+ %h/.config/noctalia/plugins/opencrow-chat - - - - ${pluginDir}"
+    ];
 
     # Symlink opencrow's socket to where the noctalia plugin expects it.
     # Must run as a user service since XDG_RUNTIME_DIR is per-user.

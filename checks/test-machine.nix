@@ -51,12 +51,17 @@ pkgs.testers.runNixOSTest {
       uid = toString nodes.test-machine.users.users.test.uid;
     in
     ''
+      import json
       machine.wait_for_unit("multi-user.target")
 
       with subtest("greetd autostarts the niri session"):
           machine.wait_for_unit("greetd.service")
-          # pam_systemd starts user@1000.service when greetd opens the session
-          machine.wait_for_unit("user@${uid}.service")
+          # pam_systemd starts user@1000.service when greetd opens the session;
+          # use wait_until_succeeds because the start job may not be queued yet.
+          machine.wait_until_succeeds(
+              "systemctl is-active user@${uid}.service",
+              timeout=30,
+          )
 
       with subtest("niri.service starts under the user manager"):
           machine.wait_until_succeeds(
@@ -78,6 +83,22 @@ pkgs.testers.runNixOSTest {
               "| grep -q 'app-niri-noctalia.*\\.scope'",
               timeout=30,
           )
+
+      with subtest("noctalia config is provisioned"):
+          # plugins.json must be a symlink with opencrow-chat enabled
+          machine.wait_until_succeeds(
+              "test -L /home/test/.config/noctalia/plugins.json",
+              timeout=30,
+          )
+          plugins = machine.succeed("cat /home/test/.config/noctalia/plugins.json")
+          pj = json.loads(plugins)
+          assert pj["states"]["opencrow-chat"]["enabled"] is True, f"opencrow-chat not enabled in plugins.json: {pj}"
+
+          # settings.json must exist with opencrow-chat widget in center bar
+          settings = machine.succeed("cat /home/test/.config/noctalia/settings.json")
+          sj = json.loads(settings)
+          center_ids = [w["id"] for w in sj["bar"]["widgets"]["center"]]
+          assert "plugin:opencrow-chat" in center_ids, f"plugin:opencrow-chat not in center widgets: {center_ids}"
 
       with subtest("opencrow-chat plugin is symlinked"):
           machine.wait_until_succeeds(

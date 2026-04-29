@@ -35,7 +35,6 @@
     piPackage = inputs.llm-agents.packages.x86_64-linux.pi;
     socketName = "Test Bot";
     noctaliaPlugin = true;
-    noctaliaPluginUsers = [ "test" ];
   };
 
   services.llama-swap.enable = true;
