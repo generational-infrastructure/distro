@@ -20,5 +20,9 @@
     "nixos-hint": "Konfiguracja peera (pubkey, przekaźniki, nazwa wyświetlana) jest zarządzana przez moduł NixOS — zobacz services.nostr-chat w swojej konfiguracji.",
     "history-limit-label": "Limit historii",
     "history-limit-description": "Wiadomości przechowywane w odbiciu panelu w pamięci (SQLite zachowuje wszystko)."
+  },
+  "menu": {
+    "open-chat": "Otwórz czat",
+    "settings": "Ustawienia"
   }
 }

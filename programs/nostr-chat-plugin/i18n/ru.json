@@ -20,5 +20,9 @@
     "nixos-hint": "Конфигурация собеседника (pubkey, релеи, отображаемое имя) управляется модулем NixOS — см. services.nostr-chat в вашей конфигурации.",
     "history-limit-label": "Лимит истории",
     "history-limit-description": "Сообщения, хранящиеся в зеркале панели в памяти (SQLite сохраняет всё)."
+  },
+  "menu": {
+    "open-chat": "Открыть чат",
+    "settings": "Настройки"
   }
 }

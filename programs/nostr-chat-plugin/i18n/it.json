@@ -20,5 +20,9 @@
     "nixos-hint": "La configurazione del peer (pubkey, relay, nome visualizzato) è gestita dal modulo NixOS — vedi services.nostr-chat nella tua configurazione.",
     "history-limit-label": "Limite cronologia",
     "history-limit-description": "Messaggi mantenuti nel mirror in memoria del pannello (SQLite conserva tutto)."
+  },
+  "menu": {
+    "open-chat": "Apri chat",
+    "settings": "Impostazioni"
   }
 }

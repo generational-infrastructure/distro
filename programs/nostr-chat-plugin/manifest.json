@@ -6,10 +6,11 @@
   "official": false,
   "license": "MIT",
   "description": "Chat panel for a NIP-17 DM peer (bot or human) via the nostr-chatd daemon",
-  "tags": ["Panel", "Network", "AI"],
+  "tags": ["Bar", "Panel", "Network", "AI"],
   "minNoctaliaVersion": "4.5.0",
   "entryPoints": {
     "main": "Main.qml",
+    "barWidget": "BarWidget.qml",
     "panel": "Panel.qml",
     "settings": "Settings.qml"
   },

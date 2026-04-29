@@ -16,14 +16,8 @@
 
 let
   cfg = config.services.nostr-chatd;
-  # Flake source contains the QML plugin at /nostr-chat
-  pluginDir = "${inputs.noctalia-plugins}/nostr-chat";
-  # Seed plugins.json so nostr-chat is enabled on first boot.
-  # Uses tmpfiles "C" (copy-if-absent) so user edits persist.
-  pluginsJson = pkgs.writeText "noctalia-plugins.json" (builtins.toJSON {
-    version = 2;
-    states.nostr-chat.enabled = true;
-  });
+  # Vendored plugin with bar widget (upstream only has panel).
+  pluginDir = ../../programs/nostr-chat-plugin;
 in
 {
   options.services.nostr-chatd = {
@@ -89,22 +83,17 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # Symlink plugin QML files into each user's noctalia plugins dir
+    # Forward plugin users to the noctalia module for config provisioning.
+    services.noctalia.users = cfg.noctaliaPluginUsers;
+
+    # Symlink plugin QML files into each user's noctalia plugins dir.
     systemd.tmpfiles.rules = lib.optionals (cfg.noctaliaPlugin && cfg.noctaliaPluginUsers != [ ]) (
       lib.concatMap (user: let
         home = config.users.users.${user}.home;
         dest = "${home}/.config/noctalia/plugins/nostr-chat";
       in [
-        # Ensure the full path is owned by the user. Without this,
-        # tmpfiles refuses to traverse ownership boundaries (e.g.
-        # /home/test owned by test → .config created by greeter as root).
-        "d ${home}/.config 0755 ${user} users -"
-        "d ${home}/.config/noctalia 0755 ${user} users -"
         "d ${home}/.config/noctalia/plugins 0755 ${user} users -"
         "L+ ${dest} - - - - ${pluginDir}"
-        # Seed plugins.json with nostr-chat enabled. "C" = copy only if
-        # the file doesn't exist yet, so user edits are preserved.
-        "C ${home}/.config/noctalia/plugins.json 0644 ${user} users - ${pluginsJson}"
       ]) cfg.noctaliaPluginUsers
     );
 
