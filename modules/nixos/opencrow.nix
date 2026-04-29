@@ -161,17 +161,22 @@ in
         ) cfg.noctaliaPluginUsers
       );
 
-    # Symlink opencrow's socket to where the noctalia plugin expects it.
-    # Must run as a user service since XDG_RUNTIME_DIR is per-user.
+    # Symlink opencrow's socket and clear stale QML cache on plugin updates.
+    # Runs as a user service since XDG_RUNTIME_DIR is per-user.
     systemd.user.services.opencrow-socket-link = lib.mkIf cfg.noctaliaPlugin {
       description = "Symlink opencrow chat socket for noctalia plugin";
       after = [ "graphical-session.target" ];
       wantedBy = [ "graphical-session.target" ];
+      # Restart when the plugin store path changes (triggers QML cache clear).
+      restartTriggers = [ "${pluginDir}" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
         ExecStart = pkgs.writeShellScript "link-opencrow-socket" ''
           ln -sf /run/opencrow-${cfg.instanceName}/chat.sock "$XDG_RUNTIME_DIR/opencrow-chat.sock"
+          # Clear QML cache so noctalia picks up updated plugin files.
+          rm -rf "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia-qs/qmlcache" \
+                 "''${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/qmlcache"
         '';
         ExecStop = "${pkgs.coreutils}/bin/rm -f %t/opencrow-chat.sock";
       };
