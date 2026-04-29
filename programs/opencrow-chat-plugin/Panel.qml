@@ -13,6 +13,7 @@ Item {
 
   property var pluginApi: null
   property var chat: pluginApi?.mainInstance?.chat || null
+
   readonly property var state: pluginApi?.mainInstance?.state || ({})
   // Daemon pushes this in the status event — single source of truth is
   // the hm-module's displayName option, not a separate plugin setting.
@@ -80,9 +81,11 @@ Item {
         NText {
           // "connected · 2/3" — the count is locale-neutral so we don't
           // have to thread args through every translation.
-          text: chat?.streaming
-            ? root.tr("panel.status-connected") + " \u00b7 " + chat.relaysUp + "/" + chat.relaysTotal
-            : root.tr("panel.status-offline")
+          text: (chat !== null && chat.typing)
+            ? root.tr("panel.status-connected") + " · thinking…"
+            : chat?.streaming
+              ? root.tr("panel.status-connected") + " \u00b7 " + chat.relaysUp + "/" + chat.relaysTotal
+              : root.tr("panel.status-offline")
           pointSize: Style.fontSizeXS
           color: Color.mOnSurfaceVariant
         }
@@ -459,7 +462,9 @@ Item {
     }
   }
 
-  onVisibleChanged: if (visible) Qt.callLater(() => input.forceActiveFocus())
+  onVisibleChanged: if (visible) {
+    Qt.callLater(() => { if (history) history.contentY = 0; input.forceActiveFocus(); });
+  }
 
   // Ctrl+F from anywhere in the panel. Shortcut rather than Keys so it
   // fires regardless of which TextArea currently has focus.

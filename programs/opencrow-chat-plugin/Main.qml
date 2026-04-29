@@ -32,7 +32,7 @@ Item {
   // so a rename is one grep instead of six.
   readonly property var ev: Object.freeze({
     status: "status", msg: "msg", sent: "sent", retry: "retry",
-    ack: "ack", img: "img", error: "error",
+    ack: "ack", img: "img", error: "error", typing: "typing",
   })
   readonly property var cmd: Object.freeze({
     send: "send", sendFile: "send-file", replay: "replay",
@@ -42,6 +42,11 @@ Item {
     pending: "pending", sent: "sent", cancelled: "cancelled",
   })
 
+  // Fallback: clear typing if no reply arrives within 2 minutes.
+  Timer { id: typingTimer; interval: 120000; onTriggered: chat.typing = false }
+  // Minimum visibility: keep indicator for at least 500ms so it doesn't flash.
+  Timer { id: typingClearTimer; interval: 500; onTriggered: chat.typing = false }
+
   QtObject {
     id: chat
     property string peerName: ""   // from daemon's OPENCROW_CHAT_DISPLAY_NAME
@@ -50,11 +55,13 @@ Item {
     property int relaysTotal: 0
     property var relays: []        // connected URLs, for the header tooltip
     property string lastError: ""
+    property bool typing: false
     property var messages: []   // [{id, from, text, ts, ack, image, replyTo, state, tries}]
     property var replyTarget: null  // {id, text} — set by Panel when user clicks a bubble
 
     function send(text) {
       if (!text.trim()) return;
+      typing = true;
       root.sockSend({
         cmd: root.cmd.send, text: text,
         replyTo: replyTarget ? replyTarget.id : undefined,
@@ -194,6 +201,9 @@ Item {
       if (arr.length > max) arr = arr.slice(-max);
       chat.messages = arr;
 
+      // Clear typing indicator when a bot reply arrives.
+      if (m.dir === "in") { typingTimer.stop(); typingClearTimer.restart(); }
+
       // Auto-open on live bot replies. The daemon marks replayed
       // history as read, so shell startup won't pop the panel for
       // yesterday's conversation.
@@ -224,6 +234,11 @@ Item {
 
     case root.ev.img:
       chat.patch(ev.target, { image: ev.image });
+      break;
+
+    case root.ev.typing:
+      chat.typing = true;
+      typingTimer.restart();
       break;
 
     case root.ev.error:
