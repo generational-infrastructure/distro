@@ -310,7 +310,7 @@ Item {
       spacing: Style.marginS
 
       // Custom multiline compose box — NTextInput wraps a single-line
-      // TextField, but Nostr DMs routinely carry code snippets and
+      // TextField, but AI chat messages routinely carry code snippets and
       // pasted logs. TextArea gives us newlines; we intercept Return
       // so plain Enter still sends (chat-app convention) while
       // Shift+Enter inserts a break.

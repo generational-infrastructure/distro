@@ -44,7 +44,7 @@ Item {
 
   QtObject {
     id: chat
-    property string peerName: ""   // from daemon's NOSTR_CHAT_DISPLAY_NAME
+    property string peerName: ""   // from daemon's OPENCROW_CHAT_DISPLAY_NAME
     property bool streaming: false
     property int relaysUp: 0
     property int relaysTotal: 0
@@ -136,7 +136,7 @@ Item {
       }
       onError: (e) => {
         chat.lastError = "daemon unreachable";
-        Logger.w("NostrChat", "socket", e, "path", path);
+        Logger.w("OpencrowChat", "socket", e, "path", path);
         reconnect.start();
       }
     }
@@ -163,7 +163,7 @@ Item {
   function recv(raw) {
     let ev;
     try { ev = JSON.parse(raw); }
-    catch (e) { Logger.w("NostrChat", "bad ipc json", raw); return; }
+    catch (e) { Logger.w("OpencrowChat", "bad ipc json", raw); return; }
 
     switch (ev.kind) {
     case root.ev.status:
