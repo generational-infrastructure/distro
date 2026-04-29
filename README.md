@@ -97,6 +97,9 @@ You keep your compositor.
 }
 ```
 
+After enabling the NixOS module, open noctalia's **Settings → Plugins** and
+enable the **AI Chat** plugin.
+
 Then add `noctalia-shell` to your compositor's autostart:
 
 **Sway**
@@ -127,9 +130,9 @@ chat widget and agent backend.
 }
 ```
 
-The plugin appears in noctalia's plugin list. Enable it from the bar settings,
-or add `{ id = "plugin:opencrow-chat"; }` to your `settings.json` widget
-layout.
+After enabling the NixOS module, open noctalia's **Settings → Plugins** and
+enable the **AI Chat** plugin. Alternatively, add
+`{ id = "plugin:opencrow-chat"; }` to your `settings.json` widget layout.
 
 ## Architecture
 

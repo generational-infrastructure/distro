@@ -26,7 +26,7 @@ let
                      'spawn-at-startup "noctalia-shell"'
     sed -i '/^input {$/a\    mod-key "Alt"' $out
     # Mod+N toggles the opencrow-chat panel in noctalia.
-    sed -i '/^binds {$/a\    Mod+N hotkey-overlay-title="Toggle Nostr Chat" { spawn "noctalia-shell" "ipc" "call" "plugin:opencrow-chat" "toggle"; }' $out
+    sed -i '/^binds {$/a\    Mod+N hotkey-overlay-title="Toggle AI Chat" { spawn "noctalia-shell" "ipc" "call" "plugin:opencrow-chat" "toggle"; }' $out
   '';
 in
 {
