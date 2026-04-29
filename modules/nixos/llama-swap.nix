@@ -59,7 +59,7 @@ in
           "qwen2.5:0.5b" = {
             cmd = "${llama-server} -m ${qwen25-05b-gguf} --port \${PORT}";
           };
-          "gemma-4:e2b" = {
+          "gemma4:e2b" = {
             cmd = "${llama-server} -m ${gemma4-e2b-gguf} --port \${PORT}";
           };
         };

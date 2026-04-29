@@ -58,7 +58,7 @@ in
 
     model = lib.mkOption {
       type = lib.types.str;
-      default = "gemma-4:e2b";
+      default = "gemma4:e2b";
       description = "Model name to request from the LLM server.";
     };
 

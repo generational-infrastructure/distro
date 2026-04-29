@@ -86,17 +86,17 @@ pkgs.testers.runNixOSTest {
           )
 
       with subtest("opencrow container starts"):
-          machine.wait_for_unit("container@opencrow.service", timeout=120)
+          machine.wait_for_unit("container@opencrow-local.service", timeout=120)
           machine.wait_until_succeeds(
-              "systemctl --machine=opencrow is-active opencrow.service",
+              "systemctl --machine=opencrow-local is-active opencrow.service",
               timeout=60,
           )
           machine.execute(
-              "journalctl --machine=opencrow -u opencrow.service --no-pager -n 50"
+              "journalctl --machine=opencrow-local -u opencrow.service --no-pager -n 50"
           )
 
       with subtest("chat socket is accessible"):
-          machine.wait_for_file("/run/opencrow-default/chat.sock", timeout=30)
+          machine.wait_for_file("/run/opencrow-local/chat.sock", timeout=30)
           # Socket symlink for noctalia plugin
           machine.wait_until_succeeds(
               "systemctl --user --machine=test@.host is-active opencrow-socket-link.service",
