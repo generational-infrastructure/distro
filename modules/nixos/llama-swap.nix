@@ -38,33 +38,69 @@ let
   };
 in
 {
-  options.services.llama-swap.llama-server-package = lib.mkOption {
-    type = lib.types.package;
-    default = llama-cpp-accelerated;
-    defaultText = lib.literalExpression "pkgs.llama-cpp with Vulkan + BLAS (+ CUDA when NVIDIA enabled)";
-    description = "llama-cpp package providing llama-server.";
+  options.services.llama-swap = {
+    llama-server-package = lib.mkOption {
+      type = lib.types.package;
+      default = llama-cpp-accelerated;
+      defaultText = lib.literalExpression "pkgs.llama-cpp with Vulkan + BLAS (+ CUDA when NVIDIA enabled)";
+      description = "llama-cpp package providing llama-server.";
+    };
+
+    gpuLayers = lib.mkOption {
+      type = lib.types.nullOr lib.types.int;
+      default = null;
+      description = ''
+        Number of model layers to offload to the GPU (--ngl).
+        null (default) lets llama-cpp decide (typically full GPU offload).
+        Set to 0 for CPU-only inference (recommended for integrated GPUs).
+        Set to -1 to explicitly offload all layers.
+      '';
+    };
+
+    threads = lib.mkOption {
+      type = lib.types.nullOr lib.types.int;
+      default = null;
+      description = ''
+        Number of CPU threads for inference (--threads).
+        null uses llama-cpp's default (all available cores).
+      '';
+    };
+
+    extraArgs = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = "Extra arguments appended to every llama-server invocation.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
 
     hardware.graphics.enable = lib.mkDefault true;
 
-    services.llama-swap = {
-      listenAddress = "0.0.0.0";
-      port = lib.mkDefault 8012;
-      settings = {
-        healthCheckTimeout = 3600;
-        logToStdout = "both";
-        models = {
-          "qwen2.5:0.5b" = {
-            cmd = "${llama-server} -m ${qwen25-05b-gguf} --port \${PORT}";
-          };
-          "gemma4:e2b" = {
-            cmd = "${llama-server} -m ${gemma4-e2b-gguf} --port \${PORT}";
+    services.llama-swap =
+      let
+        serverArgs = lib.concatStringsSep " " (
+          lib.optional (cfg.gpuLayers != null) "--ngl ${toString cfg.gpuLayers}"
+          ++ lib.optional (cfg.threads != null) "--threads ${toString cfg.threads}"
+          ++ lib.optional (cfg.extraArgs != "") cfg.extraArgs
+        );
+      in
+      {
+        listenAddress = "0.0.0.0";
+        port = lib.mkDefault 8012;
+        settings = {
+          healthCheckTimeout = 3600;
+          logToStdout = "both";
+          models = {
+            "qwen2.5:0.5b" = {
+              cmd = "${llama-server} -m ${qwen25-05b-gguf} ${serverArgs} --port \${PORT}";
+            };
+            "gemma4:e2b" = {
+              cmd = "${llama-server} -m ${gemma4-e2b-gguf} ${serverArgs} --port \${PORT}";
+            };
           };
         };
       };
-    };
 
     # llama-server binary on PATH for debugging
     environment.systemPackages = [ cfg.llama-server-package ];
