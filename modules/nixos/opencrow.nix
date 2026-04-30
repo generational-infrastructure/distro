@@ -18,6 +18,10 @@ let
 
   stateDir = "/var/lib/opencrow-${cfg.instanceName}";
 
+  skillsDir = ../../skills;
+
+  opencrowPkg = inputs.opencrow.packages.${pkgs.stdenv.hostPlatform.system}.opencrow;
+
   modelsJson = pkgs.writeText "models-${cfg.instanceName}.json" (
     builtins.toJSON {
       providers.local = {
@@ -36,6 +40,40 @@ let
   );
 
   pluginDir = ../../programs/opencrow-chat-plugin;
+
+  locationDir = "/run/opencrow-location";
+
+  locationScript = pkgs.writeShellScript "opencrow-update-location" ''
+    export PATH="${lib.makeBinPath [ pkgs.geoclue2 pkgs.jq pkgs.coreutils ]}:$PATH"
+    where_am_i="${pkgs.geoclue2}/libexec/geoclue-2.0/demos/where-am-i"
+    out="${locationDir}/location.json"
+
+    raw=$("$where_am_i" -t 30 -a 8 2>&1) || {
+      echo "where-am-i failed" >&2
+      exit 1
+    }
+
+    # Output format (locale-dependent decimal comma):
+    #   Latitude:    30,038300°
+    #   Longitude:   31,210200°
+    #   Accuracy:    25000,000000 meters
+    #   Description: ipf fallback (from WiFi data)
+    # Take the last block in case multiple updates are reported.
+    lat=$(echo "$raw" | sed -n 's/.*Latitude: *\([0-9,.-]*\).*/\1/p' | tail -1 | tr ',' '.')
+    lon=$(echo "$raw" | sed -n 's/.*Longitude: *\([0-9,.-]*\).*/\1/p' | tail -1 | tr ',' '.')
+    acc=$(echo "$raw" | sed -n 's/.*Accuracy: *\([0-9,.-]*\).*/\1/p' | tail -1 | tr ',' '.')
+    desc=$(echo "$raw" | sed -n 's/.*Description: *//p' | tail -1)
+    ts=$(date --iso-8601=seconds)
+
+    jq -n \
+      --arg lat "$lat" \
+      --arg lon "$lon" \
+      --arg acc "$acc" \
+      --arg desc "$desc" \
+      --arg ts "$ts" \
+      '{latitude: ($lat|tonumber), longitude: ($lon|tonumber), accuracy_meters: ($acc|tonumber), description: $desc, updated: $ts}' \
+      > "''${out}.tmp" && mv "''${out}.tmp" "$out"
+  '';
 in
 {
   options.services.opencrow-local = {
@@ -103,7 +141,10 @@ in
     skills = lib.mkOption {
       type = lib.types.attrsOf lib.types.path;
       default = { };
-      description = "Extra skill directories for pi.";
+      description = ''
+        Additional skill directories for pi, keyed by name. These are
+        merged with the built-in distro skills (datetime).
+      '';
     };
 
     extensions = lib.mkOption {
@@ -142,7 +183,29 @@ in
         # put the socket in a separate world-accessible run dir and
         # bind-mount it into the container.
         "d ${socketDir} 0777 root root -"
+        # Location data directory, writable by user services, readable
+        # by the container.
+        "d ${locationDir} 0777 root root -"
       ];
+
+    # Periodically update the location file via GeoClue. Runs as a
+    # user service because GeoClue requires a D-Bus agent for
+    # authorization, which is only available in user sessions.
+    systemd.user.services.opencrow-location = {
+      description = "Update opencrow location via GeoClue";
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = locationScript;
+      };
+    };
+    systemd.user.timers.opencrow-location = {
+      description = "Periodically update opencrow location";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnStartupSec = "30s";
+        OnUnitActiveSec = "10min";
+      };
+    };
 
     # Plugin symlink for every user session.
     systemd.user.tmpfiles.rules = lib.optionals cfg.noctaliaPlugin [
@@ -173,9 +236,15 @@ in
 
     services.opencrow.instances.${cfg.instanceName} = {
       enable = true;
+      skills = {
+        web = "${opencrowPkg}/share/opencrow/skills/web";
+        datetime = "${skillsDir}/datetime";
+        location = "${skillsDir}/location";
+        maps = "${skillsDir}/maps";
+      } // cfg.skills;
+
       inherit (cfg)
         piPackage
-        skills
         extensions
         extraPackages
         environmentFiles
@@ -188,6 +257,11 @@ in
       extraBindMounts."/run/opencrow-sock" = {
         hostPath = "/run/opencrow-${cfg.instanceName}";
         isReadOnly = false;
+      };
+      # Location data from the host's GeoClue service.
+      extraBindMounts."/run/opencrow-location" = {
+        hostPath = locationDir;
+        isReadOnly = true;
       };
 
       environment = {
