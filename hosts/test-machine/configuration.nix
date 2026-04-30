@@ -25,5 +25,10 @@
 
   # Use a small model for CI.
   services.opencrow-local.model = "qwen2.5:0.5b";
+
+  # Make qwen2.5:0.5b output deterministic so the chat round-trip test
+  # (which routes through opencrow and so cannot pass per-request sampling
+  # params) reliably produces the same reply.
+  services.llama-swap.modelExtraArgs."qwen2.5:0.5b" = "--temp 0 --seed 42";
   system.stateVersion = "25.05";
 }

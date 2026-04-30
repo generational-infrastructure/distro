@@ -71,6 +71,15 @@ in
       default = "";
       description = "Extra arguments appended to every llama-server invocation.";
     };
+
+    modelExtraArgs = lib.mkOption {
+      type = lib.types.attrsOf lib.types.str;
+      default = { };
+      example = {
+        "qwen2.5:0.5b" = "--temp 0 --seed 42";
+      };
+      description = "Per-model extra llama-server flags appended to its cmd.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -84,6 +93,7 @@ in
           ++ lib.optional (cfg.threads != null) "--threads ${toString cfg.threads}"
           ++ lib.optional (cfg.extraArgs != "") cfg.extraArgs
         );
+        modelArgs = id: lib.optionalString (lib.hasAttr id cfg.modelExtraArgs) " ${lib.getAttr id cfg.modelExtraArgs}";
       in
       {
         listenAddress = "0.0.0.0";
@@ -93,10 +103,10 @@ in
           logToStdout = "both";
           models = {
             "qwen2.5:0.5b" = {
-              cmd = "${llama-server} -m ${qwen25-05b-gguf} ${serverArgs} --port \${PORT}";
+              cmd = "${llama-server} -m ${qwen25-05b-gguf} ${serverArgs} --port \${PORT}" + modelArgs "qwen2.5:0.5b";
             };
             "gemma4:e2b" = {
-              cmd = "${llama-server} -m ${gemma4-e2b-gguf} ${serverArgs} --port \${PORT}";
+              cmd = "${llama-server} -m ${gemma4-e2b-gguf} ${serverArgs} --port \${PORT}" + modelArgs "gemma4:e2b";
             };
           };
         };

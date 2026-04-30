@@ -211,6 +211,9 @@ in
     systemd.user.tmpfiles.rules = lib.optionals cfg.noctaliaPlugin [
       "d %h/.config/noctalia/plugins 0755 - - -"
       "L+ %h/.config/noctalia/plugins/opencrow-chat - - - - ${pluginDir}"
+      # Also symlink into autoload dir so the patched noctalia auto-enables it.
+      "d %h/.config/noctalia/plugins-autoload 0755 - - -"
+      "L+ %h/.config/noctalia/plugins-autoload/opencrow-chat - - - - ${pluginDir}"
     ];
 
     # Symlink opencrow's socket and clear stale QML cache on plugin updates.

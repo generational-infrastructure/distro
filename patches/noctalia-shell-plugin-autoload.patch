@@ -1,0 +1,20 @@
+--- a/Services/Noctalia/PluginRegistry.qml	2026-04-30 15:28:00.123640658 +0000
++++ b/Services/Noctalia/PluginRegistry.qml	2026-04-30 15:29:30.054753199 +0000
+@@ -306,6 +306,7 @@
+ 
+       Logger.i("PluginRegistry", "All plugin manifests loaded. Total plugins:", loadedCount);
+       root.pluginsChanged();
++      PluginAutoload.processAutoloadDir();
+       scanProcess.destroy();
+     });
+   }
+--- a/Services/Noctalia/PluginService.qml	2026-04-30 15:28:00.123666237 +0000
++++ b/Services/Noctalia/PluginService.qml	2026-04-30 15:29:42.057718370 +0000
+@@ -238,6 +238,7 @@
+       // All plugins finished loading
+       root.pluginsFullyLoaded = true;
+       Logger.i("PluginService", "All plugins loaded");
++      PluginAutoload.addAutoloadedWidgets();
+       root.allPluginsLoaded();
+ 
+       // Fetch available plugins from all sources
