@@ -2,7 +2,7 @@
 #
 # Pure config — no module imports. Modules come from distro.nix,
 # wired in by default.nix (blueprint) or the test harness.
-{ config, ... }:
+{ ... }:
 
 {
   networking.hostName = "test-machine";
@@ -20,20 +20,10 @@
     extraGroups = [ "wheel" ];
   };
 
-  services.greetd = {
-    enable = true;
-    settings.default_session = {
-      command = "${config.programs.niri.package}/bin/niri-session";
-      user = "test";
-    };
-  };
+  # Override distro default user for greetd auto-login.
+  services.greetd.settings.default_session.user = "test";
 
-  services.opencrow-local = {
-    enable = true;
-    model = "qwen2.5:0.5b";
-    llmUrl = "http://127.0.0.1:8012";
-    socketName = "Test Bot";
-    noctaliaPlugin = true;
-  };
+  # Use a small model for CI.
+  services.opencrow-local.model = "qwen2.5:0.5b";
   system.stateVersion = "25.05";
 }

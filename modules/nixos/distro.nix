@@ -3,11 +3,22 @@
 # Single import that pulls in every NixOS module this distro provides.
 # Builds on noctalia-bar (which includes noctalia-plugin, opencrow,
 # llama-swap) and adds niri compositor + VM debug support.
-{ inputs, ... }:
+#
+# Configures greetd to auto-login into niri by default.  Override
+# `services.greetd` in your host config to customise.
+{ inputs, config, lib, ... }:
 {
   imports = [
     (import ./noctalia-bar.nix { inherit inputs; })
     ./niri.nix
     ./vm-debug.nix
   ];
+
+  services.greetd = {
+    enable = lib.mkDefault true;
+    settings.default_session = {
+      command = lib.mkDefault "${config.programs.niri.package}/bin/niri-session";
+      user = lib.mkDefault "alice";
+    };
+  };
 }

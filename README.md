@@ -14,7 +14,7 @@ The stack: [niri](https://github.com/YaLTeR/niri) (Wayland compositor) +
 |---|---|---|
 | **Full desktop** | Niri compositor, noctalia bar with chat widget, AI agent, local LLM | A NixOS machine |
 | **Noctalia bar** | Noctalia bar with chat widget + agent backend | Your own compositor (GNOME, Sway, Hyprland, …) |
-| **Noctalia plugin** | Chat widget + agent backend | An existing noctalia install |
+| **Noctalia plugin** | Chat widget + agent backend (enabled by default) | An existing noctalia install |
 
 ## Binary Cache
 
@@ -23,8 +23,14 @@ avoid building dependencies from source.
 
 ## Setup
 
-All three integration levels consume this flake as a NixOS module. Add it to
-your flake inputs:
+All three integration levels consume this flake as a NixOS module.
+
+### 1. Full desktop
+
+Import `nixosModules.distro` for the complete experience: niri compositor,
+noctalia shell bar with chat widget, opencrow AI agent, and local LLM server.
+The module enables the AI agent, chat widget, and greetd auto-login into niri
+by default.
 
 ```nix
 # flake.nix
@@ -37,39 +43,13 @@ your flake inputs:
   outputs = { nixpkgs, distro, ... }: {
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
       modules = [
-        # Pick ONE of the three modules below
-        distro.nixosModules.distro          # Full desktop
-        # distro.nixosModules.noctalia-bar  # Bar only
-        # distro.nixosModules.noctalia-plugin  # Plugin only
-        ./configuration.nix
+        distro.nixosModules.distro
+        {
+          # Override the default greetd auto-login user.
+          services.greetd.settings.default_session.user = "alice";
+        }
       ];
     };
-  };
-}
-```
-
-### 1. Full desktop
-
-Import `nixosModules.distro` for the complete experience: niri compositor,
-noctalia shell bar with chat widget, opencrow AI agent, and local LLM server.
-
-```nix
-# configuration.nix
-{ config, ... }:
-{
-  # Auto-login into niri (adjust to your display manager)
-  services.greetd = {
-    enable = true;
-    settings.default_session = {
-      command = "${config.programs.niri.package}/bin/niri-session";
-      user = "alice";
-    };
-  };
-
-  # AI agent with chat widget in the bar
-  services.opencrow-local = {
-    enable = true;
-    noctaliaPlugin = true;
   };
 }
 ```
@@ -84,15 +64,24 @@ This gives you:
 
 Already using GNOME, Sway, Hyprland, or another Wayland compositor? Import
 `nixosModules.noctalia-bar` to get the noctalia bar with the AI chat widget.
-You keep your compositor.
+You keep your compositor.  The module enables the AI agent and chat widget by
+default.
 
 ```nix
-# configuration.nix
-{ ... }:
+# flake.nix
 {
-  services.opencrow-local = {
-    enable = true;
-    noctaliaPlugin = true;
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-unstable";
+    distro.url = "github:numtide/distro";
+  };
+
+  outputs = { nixpkgs, distro, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [
+        distro.nixosModules.noctalia-bar
+        ./configuration.nix
+      ];
+    };
   };
 }
 ```
@@ -117,39 +106,30 @@ exec-once = noctalia-shell
 ### 3. Plugin only (existing noctalia)
 
 Already running noctalia? Import `nixosModules.noctalia-plugin` to add just the
-chat widget and agent backend.
+chat widget and agent backend.  The module enables the AI agent and chat widget
+by default.
 
 ```nix
-# configuration.nix
-{ ... }:
+# flake.nix
 {
-  services.opencrow-local = {
-    enable = true;
-    noctaliaPlugin = true;
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-unstable";
+    distro.url = "github:numtide/distro";
+  };
+
+  outputs = { nixpkgs, distro, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [
+        distro.nixosModules.noctalia-plugin
+        ./configuration.nix
+      ];
+    };
   };
 }
 ```
-
 After enabling the NixOS module, open noctalia's **Settings → Plugins** and
 enable the **AI Chat** plugin. Alternatively, add
 `{ id = "plugin:opencrow-chat"; }` to your `settings.json` widget layout.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────┐
-│ Desktop (niri / sway / …)                       │
-│  ┌────────────────────────────────────────────┐ │
-│  │ Noctalia bar                               │ │
-│  │  [Launcher] [Clock] ... [Chat Widget] ...  │ │
-│  └──────────────────────┬─────────────────────┘ │
-│                         │ UNIX socket            │
-│                     opencrow (agent)             │
-│                         │                        │
-└─────────────────────────┼───────────────────────┘
-                          │
-                     llama-swap (LLM)
-```
 
 ## License
 
