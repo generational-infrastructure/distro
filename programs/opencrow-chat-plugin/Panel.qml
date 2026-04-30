@@ -463,7 +463,13 @@ Item {
   }
 
   onVisibleChanged: if (visible) {
-    Qt.callLater(() => { if (history) history.contentY = 0; input.forceActiveFocus(); });
+    // Double callLater: the first defers past the visibility
+    // change, the second waits for ListView to finish its layout
+    // pass so contentY=0 actually sticks.
+    Qt.callLater(() => Qt.callLater(() => {
+      if (history) { history.contentY = 0; history.returnToBounds(); }
+      input.forceActiveFocus();
+    }));
   }
 
   // Ctrl+F from anywhere in the panel. Shortcut rather than Keys so it
