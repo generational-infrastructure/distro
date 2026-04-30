@@ -243,10 +243,13 @@ in
         maps = "${skillsDir}/maps";
       } // cfg.skills;
 
+      extraPackages = [
+        inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.osm-cli
+      ] ++ cfg.extraPackages;
+
       inherit (cfg)
         piPackage
         extensions
-        extraPackages
         environmentFiles
         credentialFiles
         piSettings

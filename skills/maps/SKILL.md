@@ -1,53 +1,47 @@
 ---
 name: Maps and Places
-description: Reverse geocoding and nearby place search using OpenStreetMap
+description: Search places, find nearby POIs, and get driving directions using OpenStreetMap
 ---
 
-You can look up addresses, cities, and nearby places using the free OpenStreetMap Nominatim API.
+Use `osm-cli` to search for places, find nearby points of interest, and get driving directions.
 
-### Reverse geocode (coordinates → address)
-
-Given latitude and longitude (e.g. from the location skill):
+### Search for a place
 
 ```bash
-curl -s "https://nominatim.openstreetmap.org/reverse?lat=LAT&lon=LON&format=json" \
-  -H "User-Agent: opencrow-agent"
+osm-cli search "Marienplatz, Munich"
+osm-cli search "Berlin" --limit 3
 ```
 
-Returns the full address including city, country, postcode, and street.
+Returns name, address, coordinates, and type.
 
-### Search for nearby places
-
-Use Overpass API to find specific types of places near a location:
+### Find nearby places
 
 ```bash
-curl -s "https://overpass-api.de/api/interpreter" --data-urlencode "data=[out:json];node[\"railway\"=\"station\"](around:2000,LAT,LON);out body;" \
-  -H "User-Agent: opencrow-agent"
+osm-cli nearby "restaurant" --limit 5
+osm-cli nearby "train station"
+osm-cli nearby "Starbucks" --location 48.137,11.575 --radius 5000
 ```
 
-Common tags for nearby searches:
-- Train stations: `"railway"="station"`
-- Bus stops: `"highway"="bus_stop"`
-- Tram stops: `"railway"="tram_stop"`
-- Pharmacies: `"amenity"="pharmacy"`
-- Supermarkets: `"shop"="supermarket"`
-- Restaurants: `"amenity"="restaurant"`
-- ATMs: `"amenity"="atm"`
-- Hospitals: `"amenity"="hospital"`
-- Fuel stations: `"amenity"="fuel"`
+Automatically uses your current location from the location skill.
+Override with `--location LAT,LON`. Adjust search radius with `--radius` (meters, default 2000).
 
-Adjust the `around` radius (in meters) as needed. Start with 2000 and widen if no results.
+Common search terms: restaurant, cafe, pharmacy, supermarket, train station,
+bus stop, hospital, atm, fuel, hotel, parking, bank, bakery, bar, pub,
+cinema, museum, park, dentist, doctor, gym.
 
-### Forward geocode (address → coordinates)
+You can also search by name (e.g. `osm-cli nearby "Starbucks"`).
+
+### Get directions
 
 ```bash
-curl -s "https://nominatim.openstreetmap.org/search?q=QUERY&format=json&limit=5" \
-  -H "User-Agent: opencrow-agent"
+osm-cli route "Munich" "Berlin"
 ```
+
+Shows distance, duration, and step-by-step driving directions.
+Only driving directions are available.
 
 ### Tips
 
-- Always include `User-Agent: opencrow-agent` — Nominatim requires it.
-- Combine with the location skill: read `/run/opencrow-location/location.json` first to get the user's coordinates, then use them here.
-- Nominatim has a rate limit of 1 request per second. Avoid rapid-fire queries.
-- Overpass results include `tags.name` for the place name and `lat`/`lon` for its position.
+- The `nearby` command reads `/run/opencrow-location/location.json` automatically when no `--location` is given.
+- For travel planning, chain: `osm-cli nearby "train station"` → `db-cli` for train connections.
+- Use `osm-cli search` to geocode a place name into coordinates for other tools.
