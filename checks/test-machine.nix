@@ -84,27 +84,32 @@ pkgs.testers.runNixOSTest {
               timeout=30,
           )
 
-      with subtest("noctalia config is provisioned"):
-          # plugins.json must be a symlink with opencrow-chat enabled
-          machine.wait_until_succeeds(
-              "test -L /home/test/.config/noctalia/plugins.json",
-              timeout=30,
-          )
-          plugins = machine.succeed("cat /home/test/.config/noctalia/plugins.json")
-          pj = json.loads(plugins)
-          assert pj["states"]["opencrow-chat"]["enabled"] is True, f"opencrow-chat not enabled in plugins.json: {pj}"
-
-          # settings.json must exist with opencrow-chat widget in center bar
-          settings = machine.succeed("cat /home/test/.config/noctalia/settings.json")
-          sj = json.loads(settings)
-          center_ids = [w["id"] for w in sj["bar"]["widgets"]["center"]]
-          assert "plugin:opencrow-chat" in center_ids, f"plugin:opencrow-chat not in center widgets: {center_ids}"
-
-      with subtest("opencrow-chat plugin is symlinked"):
+      with subtest("opencrow-chat plugin is autoloaded"):
+          # The plugin symlink must exist in both plugins/ and plugins-autoload/.
           machine.wait_until_succeeds(
               "test -L /home/test/.config/noctalia/plugins/opencrow-chat",
               timeout=30,
           )
+          machine.wait_until_succeeds(
+              "test -L /home/test/.config/noctalia/plugins-autoload/opencrow-chat",
+              timeout=30,
+          )
+          # plugins.json should show opencrow-chat as auto-enabled.
+          machine.wait_until_succeeds(
+              "test -f /home/test/.config/noctalia/plugins.json",
+              timeout=30,
+          )
+          # Give noctalia time to scan plugins and save state.
+          import time; time.sleep(3)
+          plugins = machine.succeed("cat /home/test/.config/noctalia/plugins.json")
+          pj = json.loads(plugins)
+          states = pj.get("states", {})
+          enabled = any(
+              s.get("enabled") is True
+              for k, s in states.items()
+              if "opencrow-chat" in k
+          )
+          assert enabled, f"opencrow-chat not auto-enabled in plugins.json: {pj}"
 
       with subtest("opencrow container starts"):
           machine.wait_for_unit("container@opencrow-local.service", timeout=120)
