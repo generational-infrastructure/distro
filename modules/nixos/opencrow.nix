@@ -43,6 +43,52 @@ let
 
   locationDir = "/run/opencrow-location";
 
+  # Notification forwarding: monitor D-Bus Notify calls and send them
+  # to opencrow via the chat socket as regular messages.
+  notifScript = pkgs.writeShellScript "opencrow-notify-forward" ''
+    export PATH="${lib.makeBinPath [ pkgs.dbus pkgs.coreutils pkgs.socat pkgs.jq ]}:$PATH"
+    SOCK="$XDG_RUNTIME_DIR/opencrow-chat.sock"
+
+    # Colon-separated list of app names to ignore.
+    IGNORED="${lib.concatStringsSep ":" (map lib.toLower cfg.notificationForwarding.ignoredApps)}"
+
+    is_ignored() {
+      local app IFS=':'
+      app=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+      for i in $IGNORED; do
+        [ "$app" = "$i" ] && return 0
+      done
+      return 1
+    }
+
+    # Wait for the chat socket to appear.
+    while [ ! -S "$SOCK" ]; do sleep 5; done
+
+    dbus-monitor --session "interface='org.freedesktop.Notifications',member='Notify'" |
+    while IFS= read -r line; do
+      case "$line" in
+        *member=Notify*) n=0; app=""; summary=""; body="" ;;
+        *'string "'*)
+          n=$((n + 1))
+          val="''${line#*string \"}"
+          val="''${val%\"}"
+          case $n in
+            1) app="$val" ;;
+            3) summary="$val" ;;
+            4) body="$val"
+               if ! is_ignored "$app"; then
+                 text="[Notification] ''${app}: ''${summary}"
+                 [ -n "$body" ] && text="''${text} — ''${body}"
+                 msg=$(jq -cn --arg t "$text" '{cmd:"send",text:$t,type:"notification"}')
+                 printf '%s\n' "$msg" | socat - UNIX-CONNECT:"$SOCK"
+               fi
+               ;;
+          esac
+          ;;
+      esac
+    done
+  '';
+
   locationScript = pkgs.writeShellScript "opencrow-update-location" ''
     export PATH="${lib.makeBinPath [ pkgs.geoclue2 pkgs.jq pkgs.coreutils ]}:$PATH"
     where_am_i="${pkgs.geoclue2}/libexec/geoclue-2.0/demos/where-am-i"
@@ -159,6 +205,16 @@ in
       description = "Extra keys for pi's settings.json.";
     };
 
+    notificationForwarding = {
+      ignoredApps = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [
+          "opencrow"
+        ];
+        description = "App names whose notifications are not forwarded (exact match).";
+      };
+    };
+
     noctaliaPlugin = lib.mkEnableOption "noctalia opencrow-chat panel plugin" // {
       description = ''
         Symlink the opencrow-chat QML plugin into each user's
@@ -183,6 +239,7 @@ in
         # put the socket in a separate world-accessible run dir and
         # bind-mount it into the container.
         "d ${socketDir} 0777 root root -"
+        "d ${socketDir}/attachments 0777 root root -"
         # Location data directory, writable by user services, readable
         # by the container.
         "d ${locationDir} 0777 root root -"
@@ -229,11 +286,23 @@ in
         RemainAfterExit = true;
         ExecStart = pkgs.writeShellScript "link-opencrow-socket" ''
           ln -sf /run/opencrow-${cfg.instanceName}/chat.sock "$XDG_RUNTIME_DIR/opencrow-chat.sock"
+          ln -sf /run/opencrow-${cfg.instanceName}/attachments "$XDG_RUNTIME_DIR/opencrow-chat-attachments"
           # Clear QML cache so noctalia picks up updated plugin files.
           rm -rf "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia-qs/qmlcache" \
                  "''${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/qmlcache"
         '';
-        ExecStop = "${pkgs.coreutils}/bin/rm -f %t/opencrow-chat.sock";
+        ExecStop = "${pkgs.coreutils}/bin/rm -f %t/opencrow-chat.sock %t/opencrow-chat-attachments";
+      };
+    };
+
+    systemd.user.services.opencrow-notify-forward = {
+      description = "Forward desktop notifications to opencrow trigger pipe";
+      after = [ "graphical-session.target" ];
+      wantedBy = [ "graphical-session.target" ];
+      serviceConfig = {
+        ExecStart = notifScript;
+        Restart = "on-failure";
+        RestartSec = 5;
       };
     };
 

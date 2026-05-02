@@ -27,6 +27,14 @@ Item {
   readonly property string sockPath:
     String(Quickshell.env("XDG_RUNTIME_DIR")) + "/opencrow-chat.sock"
 
+  // Host-side staging dir for file attachments (symlinked to the
+  // socket dir's attachments/ subdirectory, which is bind-mounted
+  // into the container).
+  readonly property string attachDir:
+    String(Quickshell.env("XDG_RUNTIME_DIR")) + "/opencrow-chat-attachments"
+  // Matching path inside the container (bind-mount target).
+  readonly property string containerAttachDir: "/run/opencrow-sock/attachments"
+
   // Mirror of the daemon's typed enums. QML has no real enum type for
   // dynamic JS, but a frozen object at least centralises the strings
   // so a rename is one grep instead of six.
@@ -56,7 +64,7 @@ Item {
     property var relays: []        // connected URLs, for the header tooltip
     property string lastError: ""
     property bool typing: false
-    property var messages: []   // [{id, from, text, ts, ack, image, replyTo, state, tries}]
+    property var messages: []   // [{id, from, text, ts, ack, image, replyTo, state, tries, type}]
     property var replyTarget: null  // {id, text} — set by Panel when user clicks a bubble
 
     function send(text) {
@@ -72,7 +80,16 @@ Item {
       if (!path) return;
       // NFilePicker returns bare paths; strip file:// just in case.
       if (path.startsWith("file://")) path = decodeURIComponent(path.slice(7));
-      root.sockSend({ cmd: root.cmd.sendFile, path: path, unlink: !!unlink });
+      // The daemon runs in a container that can't see host paths.
+      // Stage the file into the shared attachments dir (bind-mounted
+      // into the container) and send the container-side path instead.
+      const rmClause = unlink ? ' && rm -f -- "$1"' : "";
+      stageProc.command = ["sh", "-c",
+        'name="$(date +%s%N)-$(basename "$1")" && ' +
+        'cp -- "$1" "' + root.attachDir + '/$name"' +
+        rmClause + ' && printf "%s" "$name"',
+        "sh", path];
+      stageProc.running = true;
     }
     function retry(id)  { root.sockSend({ cmd: root.cmd.retry,  id: id }); }
     function cancel(id) { root.sockSend({ cmd: root.cmd.cancel, id: id }); }
@@ -190,6 +207,7 @@ Item {
         image: m.image || "", replyTo: m.replyTo || "",
         state: m.state || state.sent, tries: 0,
         from: m.dir === "out" ? "me" : "peer",
+        type: m.type || "",
       };
       let arr = chat.messages.slice();
       // Remove any streaming placeholder — the final message replaces it.

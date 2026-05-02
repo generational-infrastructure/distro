@@ -33,12 +33,13 @@ Item {
   signal cancelRequested
 
   readonly property bool mine: msg.from === "me"
+  readonly property bool isNotification: (msg.type ?? "") === "notification"
   // Match locally — O(1) and can't drift from Panel's hit list since
   // it's the same predicate.
   readonly property bool searchHit:
     searchQuery !== "" && (msg.text || "").toLowerCase().includes(searchQuery)
 
-  implicitHeight: bubble.implicitHeight
+  implicitHeight: row.isNotification ? notifText.implicitHeight : bubble.implicitHeight
 
   // Hover-reveal reply button in the 15% gutter beside the bubble.
   // Lives on the row so it never covers text and doesn't fight
@@ -61,8 +62,10 @@ Item {
   // alignment itself reads as "who said this" without an avatar.
   Rectangle {
     id: bubble
-    anchors.left:  row.mine ? undefined : parent.left
-    anchors.right: row.mine ? parent.right : undefined
+    anchors.left:  row.isNotification ? undefined : (row.mine ? undefined : parent.left)
+    anchors.right: row.isNotification ? undefined : (row.mine ? parent.right : undefined)
+    anchors.horizontalCenter: row.isNotification ? parent.horizontalCenter : undefined
+    visible: !row.isNotification
     // Image/quote/streaming bubbles snap to the cap; plain text shrinks
     // to fit so short replies don't stretch edge-to-edge.
     width: ((msg.image ?? "") !== "" || (msg.replyTo ?? "") !== "" || (msg.state ?? "") === "streaming")
@@ -199,5 +202,18 @@ Item {
         }
       }
     }
+  }
+
+  // Notification messages: no bubble, just centered faded text.
+  NText {
+    id: notifText
+    visible: row.isNotification
+    anchors.horizontalCenter: parent.horizontalCenter
+    width: parent.width * 0.85
+    text: msg.text
+    horizontalAlignment: Text.AlignHCenter
+    wrapMode: Text.Wrap
+    pointSize: Style.fontSizeM
+    color: Qt.alpha(Color.mOnSurface, 0.45)
   }
 }
