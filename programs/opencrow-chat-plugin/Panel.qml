@@ -79,12 +79,10 @@ Item {
           font.bold: true
         }
         NText {
-          // "connected · 2/3" — the count is locale-neutral so we don't
-          // have to thread args through every translation.
           text: (chat !== null && chat.typing)
-            ? root.tr("panel.status-connected") + " · thinking…"
+            ? "thinking…"
             : chat?.streaming
-              ? root.tr("panel.status-connected") + " \u00b7 " + chat.relaysUp + "/" + chat.relaysTotal
+              ? "ready"
               : root.tr("panel.status-offline")
           pointSize: Style.fontSizeXS
           color: Color.mOnSurfaceVariant
@@ -99,16 +97,7 @@ Item {
       Rectangle {
         id: relayDot
         implicitWidth: 8; implicitHeight: 8; radius: 4
-        // green = all relays up, amber = degraded, red = none.
-        color: !chat?.streaming ? Color.mError
-             : (chat.relaysUp < chat.relaysTotal ? Color.mSecondary : Color.mTertiary)
-        HoverHandler {
-          onHoveredChanged: hovered
-            ? TooltipService.show(relayDot,
-                chat?.relays?.length ? chat.relays.join("\n")
-                                     : root.tr("panel.status-offline"))
-            : TooltipService.hide(relayDot)
-        }
+        color: chat?.streaming ? Color.mTertiary : Color.mError
       }
     }
 
