@@ -346,6 +346,7 @@ in
         OPENCROW_PI_PROVIDER = "local";
         OPENCROW_PI_MODEL = cfg.model;
         OPENCROW_PI_IDLE_TIMEOUT = "1h";
+        OPENCROW_SOUL_FILE = "${pluginDir}/SOUL.md";
         OPENCROW_LOG_LEVEL = "info";
       }
       // cfg.extraEnvironment;
