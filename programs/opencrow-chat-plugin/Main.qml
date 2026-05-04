@@ -216,6 +216,8 @@ Item {
       while (i > 0 && arr[i-1].ts > entry.ts) i--;
       // Skip if already mirrored (replay after a live insert).
       if (arr.some(x => x.id === entry.id)) return;
+      // Drop [EMPTY] responses (agent produced no meaningful output).
+      if (m.dir === "in" && m.content.trim() === "[EMPTY]") return;
       arr.splice(i, 0, entry);
       const max = cfg("maxHistory") || 200;
       if (arr.length > max) arr = arr.slice(-max);
