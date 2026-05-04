@@ -27,6 +27,8 @@ let
     sed -i '/^input {$/a\    mod-key "Alt"' $out
     # Mod+N toggles the opencrow-chat panel in noctalia.
     sed -i '/^binds {$/a\    Mod+N hotkey-overlay-title="Toggle AI Chat" { spawn "noctalia-shell" "ipc" "call" "plugin:opencrow-chat" "toggle"; }' $out
+    # Mod+Space toggles voice-to-text recording.
+    sed -i '/^binds {$/a\    Mod+Space hotkey-overlay-title="Voice to Text" { spawn "voxtype" "record" "toggle"; }' $out
   '';
 in
 {

@@ -6,7 +6,8 @@ directly from your desktop bar.
 The stack: [niri](https://github.com/YaLTeR/niri) (Wayland compositor) +
 [noctalia](https://github.com/noctalia-dev/noctalia-shell) (desktop shell) +
 [opencrow](https://github.com/pinpox/opencrow) (AI agent backend) +
-[llama-swap](https://github.com/mostlygeek/llama-swap) (local LLM server).
+[llama-swap](https://github.com/mostlygeek/llama-swap) (local LLM server) +
+voice-to-text.
 
 ## Three ways to use it
 
@@ -58,7 +59,14 @@ This gives you:
 - **Mod+T** — terminal (alacritty)
 - **Mod+D** — app launcher (fuzzel)
 - **Mod+N** — toggle the chat panel
+- **Mod+Space** — toggle voice-to-text recording
 - Noctalia bar with system tray, workspaces, and chat widget
+
+#### Voice-to-text
+
+The full desktop module includes voice-to-text out of the box. Press
+**Mod+Space** to start recording and **Mod+Space** again to stop. Speech is
+transcribed locally and typed into the focused window.
 
 ### 2. Noctalia bar (any compositor)
 
@@ -88,6 +96,19 @@ default.
 
 After enabling the NixOS module, open noctalia's **Settings → Plugins** and
 enable the **AI Chat** plugin.
+
+#### Voice-to-text
+
+The noctalia-bar module does **not** include voice-to-text. To add it, import
+the module alongside:
+
+```nix
+modules = [
+  distro.nixosModules.noctalia-bar
+  distro.nixosModules.voxtype  # voice-to-text
+  ./configuration.nix
+];
+```
 
 Then add `noctalia-shell` to your compositor's autostart:
 

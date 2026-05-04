@@ -10,9 +10,12 @@
 {
   imports = [
     (import ./noctalia-bar.nix { inherit inputs; })
+    (import ./voxtype.nix { inherit inputs; })
     ./niri.nix
     ./vm-debug.nix
   ];
+
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   services.greetd = {
     enable = lib.mkDefault true;

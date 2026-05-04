@@ -15,6 +15,8 @@
     llm-agents.url = "github:numtide/llm-agents.nix";
     llm-agents.inputs.nixpkgs.follows = "nixpkgs";
     llm-agents.inputs.treefmt-nix.follows = "treefmt-nix";
+    voxtype.url = "github:peteonrails/voxtype";
+    voxtype.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
