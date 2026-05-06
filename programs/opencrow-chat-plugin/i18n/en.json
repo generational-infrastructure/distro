@@ -10,7 +10,8 @@
     "compose-waiting": "Waiting for daemon…",
     "attach-image-tooltip": "Attach image",
     "attach-image-title": "Attach image",
-    "time-now": "now"
+    "time-now": "now",
+    "models-tooltip": "Switch the model used for new replies"
   },
   "bubble": {
     "reply-tooltip": "Reply",

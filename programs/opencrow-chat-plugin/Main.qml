@@ -41,10 +41,12 @@ Item {
   readonly property var ev: Object.freeze({
     status: "status", msg: "msg", sent: "sent", retry: "retry",
     ack: "ack", img: "img", error: "error", typing: "typing", delta: "delta",
+    models: "models",
   })
   readonly property var cmd: Object.freeze({
     send: "send", sendFile: "send-file", replay: "replay",
     markRead: "mark-read", retry: "retry", cancel: "cancel",
+    listModels: "list-models", setModel: "set-model",
   })
   readonly property var state: Object.freeze({
     pending: "pending", sent: "sent", cancelled: "cancelled",
@@ -66,6 +68,12 @@ Item {
     property bool typing: false
     property var messages: []   // [{id, from, text, ts, ack, image, replyTo, state, tries, type}]
     property var replyTarget: null  // {id, text} — set by Panel when user clicks a bubble
+
+    // Model registry. populated by 'models' events from the daemon.
+    // models: [{provider, id, contextWindow, reasoning, active}]
+    // activeModel: "<provider>/<id>" or "" until set_model is observed.
+    property var models: []
+    property string activeModel: ""
 
     function send(text) {
       if (!text.trim()) return;
@@ -93,6 +101,15 @@ Item {
     }
     function retry(id)  { root.sockSend({ cmd: root.cmd.retry,  id: id }); }
     function cancel(id) { root.sockSend({ cmd: root.cmd.cancel, id: id }); }
+
+    // Refresh model list from the daemon. Result arrives via 'models' event.
+    function listModels() {
+      root.sockSend({ cmd: root.cmd.listModels });
+    }
+    // Switch model. Daemon broadcasts a 'models' event with active flag set.
+    function setModel(provider, modelId) {
+      root.sockSend({ cmd: root.cmd.setModel, provider: provider, modelId: modelId });
+    }
 
     // Patch a single message in place and reassign so ListView refreshes.
     function patch(id, props) {
@@ -152,6 +169,9 @@ Item {
           // it yet when QLocalSocket connects synchronously during
           // construction), so write through `this`, not sockSend().
           write(JSON.stringify({ cmd: root.cmd.replay, n: root.cfg("maxHistory") || 200 }) + "\n");
+          // Pull current model list so the dropdown is populated by the
+          // time the user opens the panel.
+          write(JSON.stringify({ cmd: root.cmd.listModels }) + "\n");
           flush();
         } else {
           chat.streaming = false;
@@ -298,6 +318,25 @@ Item {
       errorTimer.restart();
       ToastService.showError((chat.peerName || "opencrow-chat") + ": " + ev.text);
       break;
+
+    case root.ev.models: {
+      const incoming = Array.isArray(ev.models) ? ev.models : [];
+      // A 'models' event with a single entry marked active is the response
+      // to set-model — patch the existing list rather than replacing it.
+      if (incoming.length === 1 && incoming[0].active && chat.models.length > 0) {
+        const m = incoming[0];
+        chat.activeModel = m.provider + "/" + m.id;
+        chat.models = chat.models.map(x => Object.assign({}, x, {
+          active: x.provider === m.provider && x.id === m.id,
+        }));
+      } else {
+        // Full list response from list-models.
+        chat.models = incoming.map(m => Object.assign({}, m));
+        const active = incoming.find(m => m.active);
+        if (active) chat.activeModel = active.provider + "/" + active.id;
+      }
+      break;
+    }
     }
   }
 

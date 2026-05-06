@@ -88,6 +88,28 @@ Item {
           color: Color.mOnSurfaceVariant
         }
       }
+      // Model selector. opencrow guarantees a non-empty models list.
+      NComboBox {
+        id: modelCombo
+        Layout.alignment: Qt.AlignVCenter
+        minimumWidth: 180
+        baseSize: 0.85
+        tooltip: root.tr("panel.models-tooltip")
+        // NComboBox expects [{key, name}]. We use "<provider>/<id>" as the
+        // stable key and name for now — pi doesn't expose a separate display
+        // name for models, just provider+id.
+        model: (chat?.models ?? []).map(m => ({
+          key: m.provider + "/" + m.id,
+          name: m.id + (m.reasoning ? "  ⚡" : ""),
+          provider: m.provider,
+          modelId: m.id,
+        }))
+        currentKey: chat?.activeModel ?? ""
+        onSelected: key => {
+          const item = (chat?.models ?? []).find(m => (m.provider + "/" + m.id) === key);
+          if (item) chat.setModel(item.provider, item.id);
+        }
+      }
       NIconButton {
         icon: "search"
         tooltipText: root.tr("panel.search-tooltip")
@@ -452,6 +474,11 @@ Item {
   }
 
   onVisibleChanged: if (visible) {
+    // Refresh the model list on every open so the dropdown reflects the
+    // current backend state (pi could have started/restarted with a
+    // different set of models since the last show).
+    chat?.listModels();
+
     // Double callLater: the first defers past the visibility
     // change, the second waits for ListView to finish its layout
     // pass so contentY=0 actually sticks.

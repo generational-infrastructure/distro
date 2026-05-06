@@ -2,8 +2,19 @@
 #
 # Pure config — no module imports. Modules come from distro.nix,
 # wired in by default.nix (blueprint) or the test harness.
-_:
+{ config, pkgs, ... }:
 
+let
+  # Tiny secondary model so the chat plugin's dropdown has more than one
+  # entry to render. Q2 is more than good enough — we never ask this
+  # model to produce anything coherent in tests.
+  smollm-gguf = pkgs.fetchurl {
+    url = "https://huggingface.co/QuantFactory/SmolLM-135M-GGUF/resolve/main/SmolLM-135M.Q2_K.gguf";
+    hash = "sha256-DX46drPNJILNba21xfY2tyE0/yPWgOhz43gJdeSYKh4=";
+  };
+
+  llama-server = pkgs.lib.getExe' config.services.llama-swap.llama-server-package "llama-server";
+in
 {
   networking.hostName = "test-machine";
 
@@ -23,8 +34,18 @@ _:
   # Override distro default user for greetd auto-login.
   services.greetd.settings.default_session.user = "test";
 
-  # Use a small model for CI.
-  services.opencrow-local.model = "qwen2.5:0.5b";
+  # Expose two models so the chat dropdown has more than one entry.
+  # qwen2.5:0.5b is the default (selected at session start); smollm is
+  # the lightweight backup.
+  services.opencrow-local.models = [
+    "qwen2.5:0.5b"
+    "smollm"
+  ];
+  services.opencrow-local.defaultModel = "qwen2.5:0.5b";
+
+  services.llama-swap.settings.models.smollm = {
+    cmd = "${llama-server} -m ${smollm-gguf} --port \${PORT} --no-webui";
+  };
 
   # Make qwen2.5:0.5b output deterministic so the chat round-trip test
   # (which routes through opencrow and so cannot pass per-request sampling

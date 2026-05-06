@@ -32,9 +32,7 @@ let
           supportsDeveloperRole = false;
           supportsReasoningEffort = false;
         };
-        models = [
-          { id = cfg.model; }
-        ];
+        models = map (id: { inherit id; }) cfg.models;
       };
     }
   );
@@ -154,10 +152,28 @@ in
       description = "Base URL of an OpenAI-compatible LLM server (without /v1 suffix).";
     };
 
-    model = lib.mkOption {
+    models = lib.mkOption {
+      type = lib.types.nonEmptyListOf lib.types.str;
+      default = [ "gemma4:e2b" ];
+      example = [
+        "qwen2.5:0.5b"
+        "smollm"
+      ];
+      description = ''
+        Model IDs exposed to the chat dropdown. Each must be served by
+        the same OpenAI-compatible endpoint (i.e. configured in
+        services.llama-swap.settings.models).
+      '';
+    };
+
+    defaultModel = lib.mkOption {
       type = lib.types.str;
-      default = "gemma4:e2b";
-      description = "Model name to request from the LLM server.";
+      default = builtins.head cfg.models;
+      defaultText = lib.literalExpression "builtins.head config.services.opencrow-local.models";
+      description = ''
+        Model pi selects at session start. Must appear in `models`.
+        Defaults to the first entry of `models`.
+      '';
     };
 
     socketName = lib.mkOption {
@@ -359,7 +375,7 @@ in
         OPENCROW_SOCKET_PATH = "/run/opencrow-sock/chat.sock";
         OPENCROW_SOCKET_NAME = cfg.socketName;
         OPENCROW_PI_PROVIDER = "local";
-        OPENCROW_PI_MODEL = cfg.model;
+        OPENCROW_PI_MODEL = cfg.defaultModel;
         OPENCROW_PI_IDLE_TIMEOUT = "1h";
         OPENCROW_SOUL_FILE = "${pluginDir}/SOUL.md";
         OPENCROW_LOG_LEVEL = "info";

@@ -74,5 +74,44 @@ reply2 = send_and_wait(
 )
 print(f"TURN 2 OK: {reply2}")
 
+
+def request_models(timeout=30):
+    """Send list-models, wait for the 'models' event, and return the list."""
+    s.sendall(json.dumps({"cmd": "list-models"}).encode() + b"\n")
+    buf = bytearray()
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            chunk = s.recv(4096)
+        except socket.timeout:
+            break
+        if not chunk:
+            break
+        buf.extend(chunk)
+        while b"\n" in buf:
+            nl = buf.index(b"\n")
+            line = bytes(buf[:nl])
+            del buf[: nl + 1]
+            ev = json.loads(line)
+            if ev.get("kind") == "models":
+                return ev.get("models") or []
+            if ev.get("kind") == "error":
+                sys.exit(f"models request failed: {ev.get('text')}")
+    sys.exit("timed out waiting for models event")
+
+
+models = request_models()
+print(f"MODELS: {models}", file=sys.stderr)
+assert isinstance(models, list), f"models must be a list, got {type(models)}"
+ids = [m["id"] for m in models]
+assert "qwen2.5:0.5b" in ids, f"qwen2.5:0.5b not in {ids}"
+assert "smollm" in ids, f"smollm not in {ids}"
+active = [m for m in models if m.get("active")]
+assert len(active) == 1, f"exactly one model must be active, got {active}"
+assert active[0]["id"] == "qwen2.5:0.5b", (
+    f"default model expected to be active, got {active[0]}"
+)
+print(f"MODEL LIST OK: {len(models)} model(s), active={active[0]['id']}")
+
 s.close()
 print("SUCCESS")
