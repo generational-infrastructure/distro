@@ -2,7 +2,7 @@
 #
 # Pure config — no module imports. Modules come from distro.nix,
 # wired in by default.nix (blueprint) or the test harness.
-{ ... }:
+_:
 
 {
   networking.hostName = "test-machine";

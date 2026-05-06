@@ -1,0 +1,74 @@
+# Flake-level helpers exported as `distro.lib.<name>`.
+#
+# Blueprint auto-imports `lib/default.nix` with specialArgs
+# `{ inputs, flake, ... }` and publishes the result as `flake.lib`.
+{ inputs, flake, ... }:
+{
+  # Filtered store-path snapshot of the distro flake source.
+  #
+  # Used as `inputs.distro.url = "path:<distroSrc>"` in the wrapper flake
+  # the Calamares installer generates, and as `isoImage.storeContents` /
+  # `environment.etc."installer-store-paths"` so installs resolve offline.
+  #
+  # Excludes top-level dirs irrelevant to the installed system so edits to
+  # tests, local notes, or VCS metadata don't trigger a calamares rebuild.
+  distroSrc =
+    let
+      inherit (inputs.nixpkgs) lib;
+      excludedTopLevel = [
+        "scripts"
+        "checks"
+        "debug"
+        "local"
+        ".direnv"
+        ".envrc"
+        ".gitignore"
+        ".jj"
+        ".git"
+      ];
+    in
+    builtins.path {
+      name = "distro-flake-src";
+      path = flake.outPath;
+      filter =
+        path: _type:
+        let
+          rel = lib.removePrefix "${toString flake.outPath}/" (toString path);
+          top = builtins.head (lib.splitString "/" rel);
+        in
+        # First clause covers the root directory itself, where the
+        # `removePrefix` is a no-op (rel still equals the absolute path).
+        rel == toString path || !(builtins.elem top excludedTopLevel);
+    };
+
+  # Build a NixOS system pre-wired with the distro module.
+  #
+  # Consumers (e.g. the Calamares-generated installed flake) only have to
+  # supply hostName + host-specific modules; mkSystem injects:
+  #   - nixosModules.distro
+  #   - specialArgs.inputs = distro flake's own inputs (so distro modules
+  #     can resolve `inputs.opencrow`, `inputs.noctalia-shell`, …)
+  #   - specialArgs.flake  = the distro flake itself
+  #   - nixpkgs.hostPlatform
+  #   - networking.hostName
+  mkSystem =
+    {
+      system,
+      hostName,
+      modules ? [ ],
+    }:
+    inputs.nixpkgs.lib.nixosSystem {
+      specialArgs = {
+        inherit inputs hostName;
+        flake = inputs.self or flake;
+      };
+      modules = [
+        flake.nixosModules.distro
+        {
+          nixpkgs.hostPlatform = system;
+          networking.hostName = hostName;
+        }
+      ]
+      ++ modules;
+    };
+}

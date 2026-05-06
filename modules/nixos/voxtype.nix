@@ -34,18 +34,20 @@ let
 
   defaultSettings = builtins.fromTOML (builtins.readFile "${inputs.voxtype}/config/default.toml");
 
-  configToml = (pkgs.formats.toml { }).generate "voxtype-config.toml" (lib.recursiveUpdate defaultSettings {
-    hotkey.enabled = false;
-    whisper = {
-      language = cfg.whisperLanguage;
-      model = toString models.${cfg.whisperModel};
-    };
-    output = {
-      mode = "type";
-      fallback_to_clipboard = true;
-      notification.on_transcription = false;
-    };
-  });
+  configToml = (pkgs.formats.toml { }).generate "voxtype-config.toml" (
+    lib.recursiveUpdate defaultSettings {
+      hotkey.enabled = false;
+      whisper = {
+        language = cfg.whisperLanguage;
+        model = toString models.${cfg.whisperModel};
+      };
+      output = {
+        mode = "type";
+        fallback_to_clipboard = true;
+        notification.on_transcription = false;
+      };
+    }
+  );
 in
 {
   options.distro.voxtype = {

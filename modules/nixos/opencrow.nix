@@ -46,7 +46,14 @@ let
   # Notification forwarding: monitor D-Bus Notify calls and send them
   # to opencrow via the chat socket as regular messages.
   notifScript = pkgs.writeShellScript "opencrow-notify-forward" ''
-    export PATH="${lib.makeBinPath [ pkgs.dbus pkgs.coreutils pkgs.socat pkgs.jq ]}:$PATH"
+    export PATH="${
+      lib.makeBinPath [
+        pkgs.dbus
+        pkgs.coreutils
+        pkgs.socat
+        pkgs.jq
+      ]
+    }:$PATH"
     SOCK="$XDG_RUNTIME_DIR/opencrow-chat.sock"
 
     # Colon-separated list of app names to ignore.
@@ -90,7 +97,13 @@ let
   '';
 
   locationScript = pkgs.writeShellScript "opencrow-update-location" ''
-    export PATH="${lib.makeBinPath [ pkgs.geoclue2 pkgs.jq pkgs.coreutils ]}:$PATH"
+    export PATH="${
+      lib.makeBinPath [
+        pkgs.geoclue2
+        pkgs.jq
+        pkgs.coreutils
+      ]
+    }:$PATH"
     where_am_i="${pkgs.geoclue2}/libexec/geoclue-2.0/demos/where-am-i"
     out="${locationDir}/location.json"
 
@@ -313,11 +326,13 @@ in
         datetime = "${skillsDir}/datetime";
         location = "${skillsDir}/location";
         maps = "${skillsDir}/maps";
-      } // cfg.skills;
+      }
+      // cfg.skills;
 
       extraPackages = [
         inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.osm-cli
-      ] ++ cfg.extraPackages;
+      ]
+      ++ cfg.extraPackages;
 
       inherit (cfg)
         piPackage

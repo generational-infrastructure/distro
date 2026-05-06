@@ -8,7 +8,7 @@
 # default; override with `services.opencrow-local.enable = false;` (or
 # `noctaliaPlugin = false`) if you only want to pull in the option set.
 { inputs, ... }:
-{ ... }:
+_:
 let
   inherit (inputs.nixpkgs) lib;
 in

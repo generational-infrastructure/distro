@@ -21,8 +21,72 @@
 
   outputs =
     inputs:
-    inputs.blueprint {
-      inherit inputs;
-      nixpkgs.config.allowUnfree = true;
+    let
+      inherit (inputs.nixpkgs) lib;
+
+      base = inputs.blueprint {
+        inherit inputs;
+        nixpkgs.config.allowUnfree = true;
+      };
+
+      # Heavy / VM-driven installer tests live under ./debug and are
+      # exposed as `debug.<system>.<name>` so they don't get pulled in
+      # by `nix flake check`. Build individually, e.g.
+      #   nix build .#debug.x86_64-linux.installer-loadmodule
+      debugTests = [
+        "installer-config-gen"
+        "installer-gui-end-to-end"
+        "installer-loadmodule"
+        "installer-target-session"
+      ];
+
+      debugSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+
+      mkDebug =
+        system:
+        let
+          pkgs = import inputs.nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+          };
+          tests = lib.genAttrs debugTests (
+            name:
+            let
+              # Each test may be either `debug/<name>.nix` or
+              # `debug/<name>/default.nix` — pick the directory form
+              # when present so per-test fixtures (helper packages,
+              # YAML inputs, etc.) can live alongside their consumer.
+              dir = ./debug + "/${name}";
+              file = ./debug + "/${name}.nix";
+              path = if builtins.pathExists (dir + "/default.nix") then dir else file;
+            in
+            import path {
+              inherit pkgs inputs system;
+              flake = base;
+            }
+          );
+        in
+        tests
+        // {
+          # Aggregate pulling in every debug derivation. Build with
+          #   nix build .#debug.<system>.all
+          all =
+            (pkgs.linkFarm "debug-all" (
+              lib.mapAttrsToList (name: drv: {
+                inherit name;
+                path = drv;
+              }) tests
+            )).overrideAttrs
+              (_old: {
+                __impure = true;
+              });
+        };
+    in
+    base
+    // {
+      debug = lib.genAttrs debugSystems mkDebug;
     };
 }

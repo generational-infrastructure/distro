@@ -1,0 +1,13 @@
+diff --git a/src/backend/tty.rs b/src/backend/tty.rs
+index 407596f..a2cabca 100644
+--- a/src/backend/tty.rs
++++ b/src/backend/tty.rs
+@@ -761,7 +761,7 @@ impl Tty {
+             // problems (segfault on importing dmabufs from other renderers) and need to be
+             // excluded from some places like DRM leasing.
+             ensure!(
+-                !egl_device.is_software(),
++                std::env::var("NIRI_ALLOW_SOFTWARE_RENDERING").unwrap_or_default() == "1" || !egl_device.is_software(),
+                 "software EGL renderers are skipped"
+             );
+ 

@@ -112,7 +112,10 @@ def _haversine(lat1, lon1, lat2, lon2):
     rlat1, rlat2 = math.radians(lat1), math.radians(lat2)
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(rlat1) * math.cos(rlat2) * math.sin(dlon / 2) ** 2
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(rlat1) * math.cos(rlat2) * math.sin(dlon / 2) ** 2
+    )
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
@@ -172,7 +175,11 @@ def _maneuver_text(step):
         return f"{base} onto {name}" if name else base
     if mtype == "end of road":
         direction = modifier.replace("-", " ") if modifier else ""
-        return f"At end of road, turn {direction} onto {name}" if name else f"At end of road, turn {direction}"
+        return (
+            f"At end of road, turn {direction} onto {name}"
+            if name
+            else f"At end of road, turn {direction}"
+        )
 
     # Fallback.
     parts = [mtype.replace("_", " ")]
@@ -185,12 +192,14 @@ def _maneuver_text(step):
 
 def cmd_search(args):
     """Search for a place by name."""
-    params = urllib.parse.urlencode({
-        "q": args.query,
-        "format": "jsonv2",
-        "addressdetails": "1",
-        "limit": str(args.limit),
-    })
+    params = urllib.parse.urlencode(
+        {
+            "q": args.query,
+            "format": "jsonv2",
+            "addressdetails": "1",
+            "limit": str(args.limit),
+        }
+    )
     results = _request(f"{BASE_NOMINATIM}/search?{params}")
     if not results:
         print(f"No results for '{args.query}'")
@@ -240,8 +249,8 @@ def cmd_nearby(args):
     query = (
         f"[out:json][timeout:10];\n"
         f"(\n"
-        f'  node{filter_expr}(around:{args.radius},{lat},{lon});\n'
-        f'  way{filter_expr}(around:{args.radius},{lat},{lon});\n'
+        f"  node{filter_expr}(around:{args.radius},{lat},{lon});\n"
+        f"  way{filter_expr}(around:{args.radius},{lat},{lon});\n"
         f");\n"
         f"out center body qt {args.limit};"
     )
@@ -287,7 +296,7 @@ def cmd_nearby(args):
 def cmd_route(args):
     """Get driving directions between two places."""
     if args.mode != "driving":
-        print(f"Note: only driving directions are available. Showing driving route.\n")
+        print("Note: only driving directions are available. Showing driving route.\n")
 
     lat1, lon1, name1 = _geocode(args.origin)
     lat2, lon2, name2 = _geocode(args.destination)
@@ -313,7 +322,7 @@ def cmd_route(args):
 
     steps = route.get("legs", [{}])[0].get("steps", [])
     if steps:
-        print(f"\nSteps:")
+        print("\nSteps:")
         for i, step in enumerate(steps, 1):
             text = _maneuver_text(step)
             sdist = _format_distance(step.get("distance", 0))
@@ -330,14 +339,27 @@ def main():
     # search
     p_search = sub.add_parser("search", help="Search for a place by name")
     p_search.add_argument("query", help="Place name or address")
-    p_search.add_argument("--limit", type=int, default=1, help="Number of results (default: 1)")
+    p_search.add_argument(
+        "--limit", type=int, default=1, help="Number of results (default: 1)"
+    )
 
     # nearby
     p_nearby = sub.add_parser("nearby", help="Find nearby points of interest")
-    p_nearby.add_argument("what", help="Type of place (e.g. restaurant, pharmacy, train station)")
-    p_nearby.add_argument("--location", help="Center point as LAT,LON (default: current location)")
-    p_nearby.add_argument("--radius", type=int, default=2000, help="Search radius in meters (default: 2000)")
-    p_nearby.add_argument("--limit", type=int, default=5, help="Max results (default: 5)")
+    p_nearby.add_argument(
+        "what", help="Type of place (e.g. restaurant, pharmacy, train station)"
+    )
+    p_nearby.add_argument(
+        "--location", help="Center point as LAT,LON (default: current location)"
+    )
+    p_nearby.add_argument(
+        "--radius",
+        type=int,
+        default=2000,
+        help="Search radius in meters (default: 2000)",
+    )
+    p_nearby.add_argument(
+        "--limit", type=int, default=5, help="Max results (default: 5)"
+    )
 
     # route
     p_route = sub.add_parser("route", help="Get directions between two places")

@@ -12,16 +12,16 @@
 }:
 let
   noctaliaShell =
-    (inputs.noctalia-shell.packages.${pkgs.stdenv.hostPlatform.system}.default).overrideAttrs
+    inputs.noctalia-shell.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs
       (old: {
         patches = (old.patches or [ ]) ++ [
-          ../../patches/noctalia-shell-plugin-autoload.patch
+          (lib.cleanSource ../../patches/noctalia-shell-plugin-autoload.patch)
         ];
         # Drop the standalone autoload singleton into the source tree.
         # Keeping the logic in its own file lets the patch above stay tiny
         # (just two hook calls), reducing merge-conflict surface on upgrades.
         postPatch = (old.postPatch or "") + ''
-          cp ${../../patches/PluginAutoload.qml} Services/Noctalia/PluginAutoload.qml
+          cp ${lib.cleanSource ../../patches/PluginAutoload.qml} Services/Noctalia/PluginAutoload.qml
         '';
       });
 in

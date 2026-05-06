@@ -16,7 +16,10 @@
     inputs.self.nixosModules.vm-debug
   ];
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   services.greetd = {
     enable = lib.mkDefault true;
