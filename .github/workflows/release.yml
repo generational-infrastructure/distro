@@ -30,19 +30,12 @@ jobs:
       - name: Build ISO
         run: scripts/release/build-iso.sh
 
-      - name: Stage ISO artifact
-        id: artifact
-        run: scripts/release/stage-artifact.sh "${{ steps.tag.outputs.tag }}"
-
-      - name: Upload ISO to Hetzner Object Storage
+      - name: Upload ISO
         id: upload
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.geninf_s3_id }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.geninf_s3_key }}
-        run: |
-          scripts/release/upload-artifacts.sh \
-            "${{ steps.artifact.outputs.iso }}" \
-            "${{ steps.artifact.outputs.sha256 }}"
+        run: scripts/release/upload-artifacts.sh "${{ steps.tag.outputs.tag }}"
 
       - name: Create release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
