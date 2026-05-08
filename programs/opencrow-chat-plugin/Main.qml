@@ -217,7 +217,14 @@ Item {
       // Skip if already mirrored (replay after a live insert).
       if (arr.some(x => x.id === entry.id)) return;
       // Drop [EMPTY] responses (agent produced no meaningful output).
-      if (m.dir === "in" && m.content.trim() === "[EMPTY]") return;
+      // Commit `arr` first so the streaming placeholder built up from
+      // deltas — which already contains "[EMPTY]" — is also removed.
+      if (m.dir === "in" && m.content.trim() === "[EMPTY]") {
+        chat.messages = arr;
+        typingTimer.stop();
+        typingClearTimer.restart();
+        return;
+      }
       arr.splice(i, 0, entry);
       const max = cfg("maxHistory") || 200;
       if (arr.length > max) arr = arr.slice(-max);
