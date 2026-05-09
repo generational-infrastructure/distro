@@ -45,8 +45,12 @@ func main() {
 		l.Close()
 	}()
 
-	srv := NewServer()
-	log.Printf("listening on %s", socketPath)
+	instance := os.Getenv("OPENCROW_INSTANCE")
+	if instance == "" {
+		instance = "unknown"
+	}
+	srv := NewServer(instance)
+	log.Printf("listening on %s (instance=%s)", socketPath, instance)
 
 	for {
 		conn, err := l.Accept()
@@ -92,6 +96,8 @@ func handleConn(srv *Server, conn net.Conn) {
 			return
 		}
 		handleRequest(srv, conn, enc, req)
+	case "subscribe":
+		handleSubscribe(srv, conn, enc)
 	case "list":
 		_ = enc.Encode(ListReply{Requests: srv.list()})
 	case "submit":
@@ -152,6 +158,39 @@ func watchPeerClose(conn net.Conn, cancel context.CancelFunc) {
 		_, err := conn.Read(buf[:])
 		if err != nil {
 			cancel()
+			return
+		}
+	}
+}
+
+// handleSubscribe sends the initial snapshot, then forwards every event from
+// the subscriber's channel to the connection until either the peer
+// disconnects or the daemon shuts down.
+func handleSubscribe(srv *Server, conn net.Conn, enc *json.Encoder) {
+	sub, snap := srv.addSubscriber()
+	defer srv.removeSubscriber(sub)
+
+	if err := enc.Encode(snap); err != nil {
+		return
+	}
+
+	// Detect peer disconnect concurrently — writes alone won't notice
+	// EOF, only reads do. Subscribers are not expected to send anything
+	// after the initial subscribe.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go watchPeerClose(conn, cancel)
+
+	for {
+		select {
+		case ev, ok := <-sub.ch:
+			if !ok {
+				return
+			}
+			if err := enc.Encode(ev); err != nil {
+				return
+			}
+		case <-ctx.Done():
 			return
 		}
 	}

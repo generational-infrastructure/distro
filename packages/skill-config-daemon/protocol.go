@@ -64,3 +64,26 @@ type Ack struct {
 	Op    string `json:"op"`              // "ok" | "error"
 	Error string `json:"error,omitempty"` // populated on op=="error"
 }
+
+// frontend -> daemon (kept open for the lifetime of the subscription)
+type SubscribeReq struct{ Op string `json:"op"` } // "subscribe"
+
+// daemon -> subscriber. Instance is the value of $OPENCROW_INSTANCE the
+// daemon was started with — same value for every event from a given socket.
+// Plugins use it both to label which opencrow asked for input, and to know
+// which socket to send submit/cancel back to.
+type Snapshot struct {
+	Op       string         `json:"op"`       // "snapshot"
+	Instance string         `json:"instance"`
+	Requests []PendingEntry `json:"requests"`
+}
+type Added struct {
+	Op       string       `json:"op"`       // "added"
+	Instance string       `json:"instance"`
+	Request  PendingEntry `json:"request"`
+}
+type Removed struct {
+	Op        string `json:"op"`         // "removed"
+	Instance  string `json:"instance"`
+	RequestID string `json:"request_id"`
+}

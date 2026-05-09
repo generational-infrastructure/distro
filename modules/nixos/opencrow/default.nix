@@ -46,6 +46,7 @@ let
   discoverExtension = ./llama-swap-discover.ts;
 
   pluginDir = ../../../programs/opencrow-chat-plugin;
+  skillConfigPluginDir = ../../../programs/opencrow-skill-config-plugin;
 
   locationDir = "/run/opencrow-location";
 
@@ -333,9 +334,11 @@ in
     systemd.user.tmpfiles.rules = lib.optionals cfg.noctaliaPlugin [
       "d %h/.config/noctalia/plugins 0755 - - -"
       "L+ %h/.config/noctalia/plugins/opencrow-chat - - - - ${pluginDir}"
+      "L+ %h/.config/noctalia/plugins/opencrow-skill-config - - - - ${skillConfigPluginDir}"
       # Also symlink into autoload dir so the patched noctalia auto-enables it.
       "d %h/.config/noctalia/plugins-autoload 0755 - - -"
       "L+ %h/.config/noctalia/plugins-autoload/opencrow-chat - - - - ${pluginDir}"
+      "L+ %h/.config/noctalia/plugins-autoload/opencrow-skill-config - - - - ${skillConfigPluginDir}"
     ];
 
     # Symlink opencrow's socket and clear stale QML cache on plugin updates.
@@ -352,11 +355,12 @@ in
         ExecStart = pkgs.writeShellScript "link-opencrow-socket" ''
           ln -sf /run/opencrow-${cfg.instanceName}/chat.sock "$XDG_RUNTIME_DIR/opencrow-chat.sock"
           ln -sf /run/opencrow-${cfg.instanceName}/attachments "$XDG_RUNTIME_DIR/opencrow-chat-attachments"
+          ln -sf /run/opencrow-${cfg.instanceName}/skill-config.sock "$XDG_RUNTIME_DIR/opencrow-skill-config.sock"
           # Clear QML cache so noctalia picks up updated plugin files.
           rm -rf "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia-qs/qmlcache" \
                  "''${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/qmlcache"
         '';
-        ExecStop = "${pkgs.coreutils}/bin/rm -f %t/opencrow-chat.sock %t/opencrow-chat-attachments";
+        ExecStop = "${pkgs.coreutils}/bin/rm -f %t/opencrow-chat.sock %t/opencrow-chat-attachments %t/opencrow-skill-config.sock";
       };
     };
 
