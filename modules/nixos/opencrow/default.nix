@@ -118,6 +118,8 @@ let
   '';
 in
 {
+  imports = [ ../opencrow-warmup.nix ];
+
   options.services.opencrow-local = {
     enable = lib.mkEnableOption "opencrow with local socket backend and Ollama LLM";
 
@@ -229,6 +231,13 @@ in
     # Enable llama-swap by default — opencrow-local's default llmUrl
     # points at llama-swap's port (8012).
     services.llama-swap.enable = lib.mkDefault true;
+
+    # Prime the LLM prompt cache at boot. Lives in its own module so
+    # the warmup machinery can be disabled independently.
+    services.opencrow-warmup = {
+      enable = lib.mkDefault true;
+      inherit (cfg) instanceName;
+    };
     # Host-accessible runtime dirs for the chat socket + location data.
     systemd.tmpfiles.rules =
       let
@@ -306,7 +315,6 @@ in
         RestartSec = 5;
       };
     };
-
     services.opencrow.instances.${cfg.instanceName} = {
       enable = true;
       skills = {
@@ -331,6 +339,7 @@ in
 
       extensions = cfg.extensions // {
         llama-swap-discover = discoverExtension;
+
       };
 
       # Bind-mount the host socket dir into the container so opencrow
