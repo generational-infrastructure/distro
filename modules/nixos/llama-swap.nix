@@ -33,8 +33,13 @@ let
   };
 
   gemma4-e2b-gguf = builtins.fetchurl {
-    url = "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf";
-    sha256 = "sha256-rABp68zTmSXYNvJKiMDwyFjSBXjCmyGrfO3OZu5XaEU=";
+    url = "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q6_K.gguf";
+    sha256 = "sha256-s2gk8Tv5+rKRDLe0KCpNc7E3me5BJtTsJBMJzmnA54M=";
+  };
+
+  gemma4-e4b-gguf = builtins.fetchurl {
+    url = "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q6_K.gguf";
+    sha256 = "sha256-Pb9j4ivoM9DmhPJrNtRUSPXyBvDnpsrGtKqeDPTJzOg=";
   };
 in
 {
@@ -76,6 +81,10 @@ in
             };
             "gemma4:e2b" = {
               cmd = "${llama-server} -m ${gemma4-e2b-gguf} --port \${PORT}" + modelArgs "gemma4:e2b";
+            };
+            "gemma4:e4b" = {
+              cmd = "${llama-server} -m ${gemma4-e4b-gguf} --port \${PORT}" + modelArgs "gemma4:e4b";
+              aliases = [ "gemma4" ];
             };
           };
         };
