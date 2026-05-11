@@ -15,4 +15,15 @@ _: {
   programs.ruff-format.enable = true;
   programs.ruff-check.enable = true;
   programs.ruff-check.extendSelect = [ "I" ];
+
+  # JS/TS
+  programs.prettier.enable = true;
+  programs.prettier.includes = [
+    "*.ts"
+    "*.tsx"
+    "*.js"
+    "*.jsx"
+  ];
+  # QML's JavaScript dialect (.pragma library) is not valid ES.
+  programs.prettier.excludes = [ "programs/opencrow-chat-plugin/MsgText.js" ];
 }
