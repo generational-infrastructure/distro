@@ -329,6 +329,11 @@ Item {
     }
 
     case root.ev.error:
+      // Startup races: warmup module and plugin both kick list-models at
+      // boot, and the daemon serializes them with a transient "already in
+      // progress" error. Harmless — the in-flight call still delivers the
+      // models event — so swallow it instead of toasting on every login.
+      if (/already in progress/i.test(ev.text || "")) break;
       chat.lastError = ev.text;
       errorTimer.restart();
       ToastService.showError((chat.peerName || "opencrow-chat") + ": " + ev.text);
