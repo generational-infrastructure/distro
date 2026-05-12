@@ -138,6 +138,21 @@ Item {
     sockSend({ cmd: cmd.markRead });
   }
 
+  // Fire-and-forget desktop notification via libnotify. notify-send
+  // talks to the org.freedesktop.Notifications service that noctalia
+  // itself implements, so this surfaces as a normal toast/popup.
+  function notifyIncoming(text) {
+    // Skip when the panel is already on-screen: the user is looking at
+    // the conversation, an extra desktop toast would just be noise.
+    if (pluginApi?.panelOpenScreen) { sockSend({ cmd: cmd.markRead }); return; }
+    const title = chat.peerName || "opencrow-chat";
+    const body = (text || "").replace(/\s+/g, " ").trim().slice(0, 200);
+    Quickshell.execDetached([
+      "notify-send", "-a", "opencrow-chat", "-c", "im.received",
+      title, body,
+    ]);
+  }
+
   // Persistent bidirectional socket. On connect we ask for a replay;
   // the daemon answers with status + recent messages on the same pipe.
   // A disconnect (daemon restart, suspend) just triggers the reconnect
@@ -253,10 +268,10 @@ Item {
       // Clear typing indicator when a bot reply arrives.
       if (m.dir === "in") { typingTimer.stop(); typingClearTimer.restart(); }
 
-      // Auto-open on live bot replies. The daemon marks replayed
-      // history as read, so shell startup won't pop the panel for
-      // yesterday's conversation.
-      if (m.dir === "in" && !m.read) root.showPanel();
+      // Surface live bot replies as a desktop notification instead of
+      // grabbing focus by popping the panel open. The daemon marks
+      // replayed history as read, so shell startup stays quiet.
+      if (m.dir === "in" && !m.read) root.notifyIncoming(m.content);
       break;
     }
 

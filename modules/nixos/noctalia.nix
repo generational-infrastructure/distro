@@ -27,7 +27,10 @@ let
 in
 {
   config = {
-    environment.systemPackages = [ noctaliaShell ];
+    environment.systemPackages = [
+      noctaliaShell
+      pkgs.libnotify
+    ];
 
     # Symlink opencrow-chat into the autoload directory so noctalia
     # auto-enables it and places its bar widget in the center section.

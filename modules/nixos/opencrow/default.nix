@@ -272,6 +272,7 @@ in
         type = lib.types.listOf lib.types.str;
         default = [
           "opencrow"
+          "opencrow-chat"
         ];
         description = "App names whose notifications are not forwarded (exact match).";
       };
