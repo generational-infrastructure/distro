@@ -16,13 +16,37 @@
 let
   cfg = config.services.opencrow-local;
 
+  stateDir = "/var/lib/opencrow-${cfg.instanceName}";
+
   skillsDir = ../../../skills;
 
   opencrowPkg = inputs.opencrow.packages.${pkgs.stdenv.hostPlatform.system}.opencrow;
 
+  skillConfigPkg = inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.skill-config;
+  skillConfigDaemonPkg = inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.skill-config-daemon;
+
+  # All skills (built-ins + user-supplied via cfg.skills), merged once so we
+  # can both pass them to the upstream module and materialise them as a
+  # single linked-farm dir for skill-config to read SKILL.md from at the
+  # same path on host and inside the container.
+  allSkills = {
+    web = "${opencrowPkg}/share/opencrow/skills/web";
+    datetime = "${skillsDir}/datetime";
+    location = "${skillsDir}/location";
+    maps = "${skillsDir}/maps";
+    skill-config = "${skillsDir}/skill-config";
+    calendar = "${skillsDir}/calendar";
+  }
+  // cfg.skills;
+
+  skillsFarm = pkgs.linkFarm "opencrow-${cfg.instanceName}-skills-defs" (
+    lib.mapAttrsToList (name: path: { inherit name path; }) allSkills
+  );
+
   discoverExtension = ./llama-swap-discover.ts;
 
   pluginDir = ../../../programs/opencrow-chat-plugin;
+  skillConfigPluginDir = ../../../programs/opencrow-skill-config-plugin;
 
   locationDir = "/run/opencrow-location";
 
@@ -253,7 +277,44 @@ in
         # Location data directory, writable by user services, readable
         # by the container.
         "d ${locationDir} 0777 root root -"
+        # Skill schemas: skill-config reads SKILL.md frontmatter from here
+        # at the same path on host and inside the container.
+        "L+ ${stateDir}/skills-defs - - - - ${skillsFarm}"
+        # Per-instance config + secrets store, owned by the opencrow user.
+        "d ${stateDir}/skill-config 0750 opencrow opencrow -"
+        "f ${stateDir}/skill-config/config.toml 0644 opencrow opencrow -"
+        "f ${stateDir}/skill-config/secrets.toml 0600 opencrow opencrow -"
       ];
+
+    # skill-config on the host PATH for occasional `sudo -u opencrow
+    # skill-config …` debugging or manual edits. The agent-driven flow
+    # inside the container is the primary path; this is a fallback.
+    environment.systemPackages = [ skillConfigPkg ];
+
+    # Sidecar daemon inside the opencrow container. The upstream
+    # services.opencrow.instances.<name> module sets containers.<container>.config
+    # inline; NixOS module merging lets us add another systemd service to the
+    # same container's config from outside without modifying upstream.
+    containers."opencrow-${cfg.instanceName}".config = _: {
+      systemd.services.skill-config-daemon = {
+        description = "skill-config IPC daemon for opencrow (${cfg.instanceName})";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "local-fs.target" ];
+        environment = {
+          SKILL_CONFIG_SOCKET = "/run/opencrow-sock/skill-config.sock";
+          # Stamps every event the daemon emits so the popup can label
+          # which opencrow asked for input.
+          OPENCROW_INSTANCE = cfg.instanceName;
+        };
+        serviceConfig = {
+          ExecStart = lib.getExe skillConfigDaemonPkg;
+          Restart = "on-failure";
+          RestartSec = 5;
+          User = "opencrow";
+          Group = "opencrow";
+        };
+      };
+    };
 
     # Periodically update the location file via GeoClue. Runs as a
     # user service because GeoClue requires a D-Bus agent for
@@ -278,9 +339,11 @@ in
     systemd.user.tmpfiles.rules = lib.optionals cfg.noctaliaPlugin [
       "d %h/.config/noctalia/plugins 0755 - - -"
       "L+ %h/.config/noctalia/plugins/opencrow-chat - - - - ${pluginDir}"
+      "L+ %h/.config/noctalia/plugins/opencrow-skill-config - - - - ${skillConfigPluginDir}"
       # Also symlink into autoload dir so the patched noctalia auto-enables it.
       "d %h/.config/noctalia/plugins-autoload 0755 - - -"
       "L+ %h/.config/noctalia/plugins-autoload/opencrow-chat - - - - ${pluginDir}"
+      "L+ %h/.config/noctalia/plugins-autoload/opencrow-skill-config - - - - ${skillConfigPluginDir}"
     ];
 
     # Symlink opencrow's socket and clear stale QML cache on plugin updates.
@@ -289,19 +352,26 @@ in
       description = "Symlink opencrow chat socket for noctalia plugin";
       after = [ "graphical-session.target" ];
       wantedBy = [ "graphical-session.target" ];
-      # Restart when the plugin store path changes (triggers QML cache clear).
-      restartTriggers = [ "${pluginDir}" ];
+      # Restart when either plugin's store path changes — that bumps the
+      # QML cache wipe so noctalia recompiles the updated files. Without
+      # this, nix store mtimes (all epoch+1) defeat Qt's path+mtime cache
+      # invalidation and the old compiled QML keeps loading.
+      restartTriggers = [
+        "${pluginDir}"
+        "${skillConfigPluginDir}"
+      ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
         ExecStart = pkgs.writeShellScript "link-opencrow-socket" ''
           ln -sf /run/opencrow-${cfg.instanceName}/chat.sock "$XDG_RUNTIME_DIR/opencrow-chat.sock"
           ln -sf /run/opencrow-${cfg.instanceName}/attachments "$XDG_RUNTIME_DIR/opencrow-chat-attachments"
+          ln -sf /run/opencrow-${cfg.instanceName}/skill-config.sock "$XDG_RUNTIME_DIR/opencrow-skill-config.sock"
           # Clear QML cache so noctalia picks up updated plugin files.
           rm -rf "''${XDG_CACHE_HOME:-$HOME/.cache}/noctalia-qs/qmlcache" \
                  "''${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/qmlcache"
         '';
-        ExecStop = "${pkgs.coreutils}/bin/rm -f %t/opencrow-chat.sock %t/opencrow-chat-attachments";
+        ExecStop = "${pkgs.coreutils}/bin/rm -f %t/opencrow-chat.sock %t/opencrow-chat-attachments %t/opencrow-skill-config.sock";
       };
     };
 
@@ -317,16 +387,13 @@ in
     };
     services.opencrow.instances.${cfg.instanceName} = {
       enable = true;
-      skills = {
-        web = "${opencrowPkg}/share/opencrow/skills/web";
-        datetime = "${skillsDir}/datetime";
-        location = "${skillsDir}/location";
-        maps = "${skillsDir}/maps";
-      }
-      // cfg.skills;
+      skills = allSkills;
 
       extraPackages = [
         inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.osm-cli
+        inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.caldav-cli
+        skillConfigPkg
+        skillConfigDaemonPkg
       ]
       ++ cfg.extraPackages;
 
@@ -364,6 +431,9 @@ in
         OPENCROW_PI_IDLE_TIMEOUT = "1h";
         OPENCROW_SOUL_FILE = "${pluginDir}/SOUL.md";
         OPENCROW_LOG_LEVEL = "info";
+        # skill-config reads these to find the per-instance state dir.
+        OPENCROW_INSTANCE = cfg.instanceName;
+        OPENCROW_STATE_DIR = stateDir;
       }
       // cfg.extraEnvironment;
     };
