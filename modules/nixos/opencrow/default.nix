@@ -50,6 +50,17 @@ let
 
   locationDir = "/run/opencrow-location";
 
+  # auth.json content pi reads from `<PI_CODING_AGENT_DIR>/auth.json`.
+  # The `!cat ...` indirection is evaluated by pi at request time; the
+  # systemd credential dir is in scope because LoadCredential= installs
+  # the key file in the container's opencrow.service environment.
+  piAuthJson = (pkgs.formats.json { }).generate "pi-auth.json" {
+    openrouter = {
+      type = "api_key";
+      key = ''!cat "$CREDENTIALS_DIRECTORY/openrouter-api-key"'';
+    };
+  };
+
   # Notification forwarding: monitor D-Bus Notify calls and send them
   # to opencrow via the chat socket as regular messages.
   notifScript = pkgs.writeShellScript "opencrow-notify-forward" ''
@@ -233,6 +244,29 @@ in
       description = "Extra keys for pi's settings.json.";
     };
 
+    piModels = lib.mkOption {
+      type = lib.types.attrsOf lib.types.anything;
+      default = { };
+      description = ''
+        Extra keys for pi's models.json. Use to add custom providers or
+        override built-in model properties via `modelOverrides`.
+      '';
+    };
+
+    openrouter = {
+      enable = lib.mkEnableOption "OpenRouter provider for pi";
+      apiKeyFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = ''
+          Host path to a file containing the OpenRouter API key (single
+          line, no trailing newline required). Loaded as a systemd
+          credential and exposed to pi inside the container via
+          `providers.openrouter.apiKey = "!cat $CREDENTIALS_DIRECTORY/openrouter-api-key"`.
+        '';
+      };
+    };
+
     notificationForwarding = {
       ignoredApps = lib.mkOption {
         type = lib.types.listOf lib.types.str;
@@ -252,6 +286,13 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = !cfg.openrouter.enable || cfg.openrouter.apiKeyFile != null;
+        message = "services.opencrow-local.openrouter.apiKeyFile must be set when openrouter.enable = true.";
+      }
+    ];
+
     # Enable llama-swap by default — opencrow-local's default llmUrl
     # points at llama-swap's port (8012).
     services.llama-swap.enable = lib.mkDefault true;
@@ -314,6 +355,13 @@ in
           Group = "opencrow";
         };
       };
+
+      # auth.json install for openrouter. See piAuthJson above.
+      systemd.tmpfiles.rules = lib.optionals cfg.openrouter.enable [
+        "L+ ${
+          config.services.opencrow.instances.${cfg.instanceName}.environment.PI_CODING_AGENT_DIR
+        }/auth.json - - - - ${piAuthJson}"
+      ];
     };
 
     # Periodically update the location file via GeoClue. Runs as a
@@ -400,10 +448,15 @@ in
       inherit (cfg)
         piPackage
         environmentFiles
-        credentialFiles
         piSettings
+        piModels
         ;
 
+      credentialFiles =
+        cfg.credentialFiles
+        // lib.optionalAttrs cfg.openrouter.enable {
+          "openrouter-api-key" = cfg.openrouter.apiKeyFile;
+        };
       extensions = cfg.extensions // {
         llama-swap-discover = discoverExtension;
 

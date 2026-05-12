@@ -166,6 +166,52 @@ under `nixosModules.distro`. On any other compositor, bind your own keys
 to `noctalia-shell ipc call plugin:opencrow-chat toggle` (and
 `voxtype record toggle` if you also imported `nixosModules.voxtype`).
 
+## Hacking
+
+### OpenRouter as an additional backend
+
+The chat agent (`opencrow-local`) defaults to the local LLM served by
+llama-swap. You can add [OpenRouter](https://openrouter.ai) as an
+additional backend — pi's built-in `openrouter` provider exposes
+~200 curated models, switchable mid-session from the chat panel.
+
+1. Create a key file on the target host (root-owned, mode `0400`):
+
+   ```bash
+   install -m 0400 -o root -g root /dev/stdin /etc/secrets/openrouter-api-key <<< "sk-or-v1-..."
+   ```
+
+2. Enable the provider in your NixOS config:
+
+   ```nix
+   services.opencrow-local.openrouter = {
+     enable = true;
+     apiKeyFile = "/etc/secrets/openrouter-api-key";
+   };
+   ```
+
+   The key is loaded as a systemd credential and resolved by pi at
+   request time via `!cat $CREDENTIALS_DIRECTORY/openrouter-api-key` —
+   it never lands in the nix store.
+
+3. (Optional) Curate or override built-in model metadata via
+   `piModels`:
+
+   ```nix
+   services.opencrow-local.piModels.providers.openrouter.modelOverrides = {
+     "anthropic/claude-sonnet-4.5".contextWindow = 200000;
+   };
+   ```
+
+4. (Optional) Make an OpenRouter model the default at session start:
+
+   ```nix
+   services.opencrow-local.defaultModel = "anthropic/claude-sonnet-4.5";
+   ```
+
+llama-swap stays enabled alongside; pick the provider per session
+from the chat panel's model selector.
+
 ## License
 
 See [LICENSE](LICENSE).
