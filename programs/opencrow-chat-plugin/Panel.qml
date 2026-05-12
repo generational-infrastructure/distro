@@ -92,7 +92,8 @@ Item {
       NComboBox {
         id: modelCombo
         Layout.alignment: Qt.AlignVCenter
-        minimumWidth: 320
+        minimumWidth: 420
+        popupHeight: 420
         baseSize: 0.85
         tooltip: root.tr("panel.models-tooltip")
         // NComboBox expects [{key, name}]. We use "<provider>/<id>" as the
