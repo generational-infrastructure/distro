@@ -141,7 +141,7 @@ in
 
     defaultModel = lib.mkOption {
       type = lib.types.str;
-      default = "gemma4:e2b";
+      default = "gemma4:e4b";
       description = ''
         Model pi selects at session start. Must be served by the
         OpenAI-compatible endpoint at `llmUrl` (i.e. configured in
