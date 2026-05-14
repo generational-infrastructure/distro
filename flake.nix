@@ -95,5 +95,9 @@
       iso = lib.genAttrs debugSystems (_system: {
         installer = base.nixosConfigurations.installer.config.system.build.isoImage;
       });
+      overlays = {
+        noctalia = import ./overlays/noctalia.nix { flake = base; };
+        default = import ./overlays/noctalia.nix { flake = base; };
+      };
     };
 }

@@ -3,32 +3,22 @@
 # Installs noctalia-shell (patched with plugins-autoload support) and
 # symlinks the opencrow-chat plugin into the autoload directory so it
 # is enabled automatically when noctalia starts.
-{ inputs, ... }:
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+#
+# The patched package is materialized by extending `pkgs` locally rather
+# than by registering an overlay on `nixpkgs.overlays`. NixOS test
+# frameworks (and any other consumer that pins nixpkgs read-only) make
+# `nixpkgs.overlays` unmergeable, so a module-level overlay assignment
+# breaks `nix flake check`. `pkgs.extend` sidesteps that without
+# changing the resulting derivation.
+{ flake, ... }:
+{ pkgs, ... }:
 let
-  noctaliaShell =
-    inputs.noctalia-shell.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs
-      (old: {
-        patches = (old.patches or [ ]) ++ [
-          (lib.cleanSource ../../patches/noctalia-shell-plugin-autoload.patch)
-        ];
-        # Drop the standalone autoload singleton into the source tree.
-        # Keeping the logic in its own file lets the patch above stay tiny
-        # (just two hook calls), reducing merge-conflict surface on upgrades.
-        postPatch = (old.postPatch or "") + ''
-          cp ${lib.cleanSource ../../patches/PluginAutoload.qml} Services/Noctalia/PluginAutoload.qml
-        '';
-      });
+  pkgs' = pkgs.extend flake.overlays.noctalia;
 in
 {
   config = {
     environment.systemPackages = [
-      noctaliaShell
+      pkgs'.noctalia-shell
       pkgs.libnotify
     ];
 

@@ -78,4 +78,26 @@
       ]
       ++ modules;
     };
+
+  # Apply distro's plugins-autoload patch to an arbitrary noctalia-shell
+  # derivation. Consumers who already pin their own `noctalia-shell` input
+  # (e.g. via home-manager) can wrap it without taking distro's
+  # `nixosModules.noctalia` module wholesale:
+  #
+  #   noctalia-shell = inputs.distro.lib.patchNoctaliaShell
+  #     inputs.noctalia.packages.${system}.default;
+  patchNoctaliaShell =
+    pkg:
+    let
+      inherit (inputs.nixpkgs) lib;
+    in
+    pkg.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [
+        (lib.cleanSource ../patches/noctalia-shell-plugin-autoload.patch)
+      ];
+      postPatch = (old.postPatch or "") + ''
+        cp ${lib.cleanSource ../patches/PluginAutoload.qml} \
+           Services/Noctalia/PluginAutoload.qml
+      '';
+    });
 }

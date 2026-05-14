@@ -157,14 +157,16 @@ by default.
   };
 }
 ```
-After enabling the NixOS module, open noctalia's **Settings → Plugins** and
-enable the **AI Chat** plugin. Alternatively, add
-`{ id = "plugin:opencrow-chat"; }` to your `settings.json` widget layout.
-
 As with integration 2, `Super+A` / `Super+S` are only bound automatically
 under `nixosModules.distro`. On any other compositor, bind your own keys
 to `noctalia-shell ipc call plugin:opencrow-chat toggle` (and
 `voxtype record toggle` if you also imported `nixosModules.voxtype`).
+
+Apply `overlays.noctalia` so distro can auto-enable its plugins:
+
+```nix
+{ nixpkgs.overlays = [ inputs.distro.overlays.noctalia ]; }
+```
 
 ## Hacking
 
