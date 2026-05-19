@@ -217,12 +217,13 @@
         ]
       },
       "locked": {
-        "lastModified": 1778510679,
-        "narHash": "sha256-l5Uj5LqMPOETgLANEnygd/incn9uSqeU8R+y55J3lDE=",
-        "owner": "pinpox",
-        "repo": "opencrow",
-        "rev": "6e2432b40ddbff1c2ca9d568ed069d9763f099a6",
-        "type": "github"
+        "lastModified": 1779196272,
+        "narHash": "sha256-JUb3Fs7V01sMsOKN0vjoO3cOHF62dbFqmUDpR+syc6o=",
+        "ref": "streaming-fix-message-key",
+        "rev": "591bf6a847928ac1177e47b4fb3b5619f22a7784",
+        "revCount": 328,
+        "type": "git",
+        "url": "file:///home/grmpf/projects/opencrow"
       },
       "original": {
         "owner": "pinpox",

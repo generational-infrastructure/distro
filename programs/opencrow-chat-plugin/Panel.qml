@@ -247,6 +247,7 @@ Item {
         }
         onRetryRequested:  chat.retry(modelData.id)
         onCancelRequested: chat.cancel(modelData.id)
+        onConfirmRequested: confirmed => chat.confirmRespond(modelData.id, confirmed)
       }
 
       // BottomToTop keeps contentY stable on append, so the only

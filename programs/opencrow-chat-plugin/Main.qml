@@ -41,12 +41,13 @@ Item {
   readonly property var ev: Object.freeze({
     status: "status", msg: "msg", sent: "sent", retry: "retry",
     ack: "ack", img: "img", error: "error", typing: "typing", delta: "delta",
-    models: "models",
+    models: "models", confirm: "confirm",
   })
   readonly property var cmd: Object.freeze({
     send: "send", sendFile: "send-file", replay: "replay",
     markRead: "mark-read", retry: "retry", cancel: "cancel",
     listModels: "list-models", setModel: "set-model",
+    confirmResponse: "confirm-response",
   })
   readonly property var state: Object.freeze({
     pending: "pending", sent: "sent", cancelled: "cancelled",
@@ -101,6 +102,13 @@ Item {
     }
     function retry(id)  { root.sockSend({ cmd: root.cmd.retry,  id: id }); }
     function cancel(id) { root.sockSend({ cmd: root.cmd.cancel, id: id }); }
+
+    // Answer a pending confirm request. Patches the local message so
+    // its Allow/Deny buttons disappear and an outcome label shows.
+    function confirmRespond(id, confirmed) {
+      root.sockSend({ cmd: root.cmd.confirmResponse, id: id, confirmed: confirmed });
+      patch(id, { confirmState: confirmed ? "allowed" : "denied" });
+    }
 
     // Refresh model list from the daemon. Result arrives via 'models' event.
     function listModels() {
@@ -355,6 +363,30 @@ Item {
         const active = incoming.find(m => m.active);
         if (active) chat.activeModel = active.provider + "/" + active.id;
       }
+      break;
+    }
+
+    case root.ev.confirm: {
+      // Render the confirmation as a regular message bubble with a
+      // pending state. Bubble renders Allow/Deny buttons when type ==
+      // "confirm" and confirmState == "pending"; chat.confirmRespond()
+      // patches it once the user clicks.
+      const id = ev.confirmId || "";
+      if (!id) break;
+      let arr = chat.messages.slice();
+      if (arr.some(x => x.id === id)) break;
+      arr.push({
+        id: id,
+        text: ev.confirmBody || "",
+        ts: Date.now(),
+        ack: "", image: "", replyTo: "",
+        state: root.state.sent, tries: 0,
+        from: "peer",
+        type: "confirm",
+        confirmTitle: ev.confirmTitle || "",
+        confirmState: "pending",
+      });
+      chat.messages = arr;
       break;
     }
     }

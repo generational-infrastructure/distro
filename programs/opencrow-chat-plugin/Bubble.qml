@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import qs.Commons
@@ -31,15 +32,21 @@ Item {
   signal jumpToQuote
   signal retryRequested
   signal cancelRequested
+  // Emitted when the user clicks Allow/Deny on a confirm bubble.
+  // Panel forwards to chat.confirmRespond.
+  signal confirmRequested(bool confirmed)
 
   readonly property bool mine: msg.from === "me"
   readonly property bool isNotification: (msg.type ?? "") === "notification"
+  readonly property bool isConfirm: (msg.type ?? "") === "confirm"
   // Match locally — O(1) and can't drift from Panel's hit list since
   // it's the same predicate.
   readonly property bool searchHit:
     searchQuery !== "" && (msg.text || "").toLowerCase().includes(searchQuery)
 
-  implicitHeight: row.isNotification ? notifText.implicitHeight : bubble.implicitHeight
+  implicitHeight: row.isConfirm ? confirmCard.implicitHeight
+                                : row.isNotification ? notifText.implicitHeight
+                                                     : bubble.implicitHeight
 
   // Hover-reveal reply button in the 15% gutter beside the bubble.
   // Lives on the row so it never covers text and doesn't fight
@@ -53,7 +60,7 @@ Item {
     anchors.right: row.mine ? bubble.left : undefined
     anchors.margins: Style.marginXS
     opacity: (hov.hovered || hovering) ? 1 : 0
-    visible: opacity > 0
+    visible: !row.isConfirm && !row.isNotification && opacity > 0
     Behavior on opacity { NumberAnimation { duration: 100 } }
     onClicked: row.replyRequested()
   }
@@ -65,7 +72,7 @@ Item {
     anchors.left:  row.isNotification ? undefined : (row.mine ? undefined : parent.left)
     anchors.right: row.isNotification ? undefined : (row.mine ? parent.right : undefined)
     anchors.horizontalCenter: row.isNotification ? parent.horizontalCenter : undefined
-    visible: !row.isNotification
+    visible: !row.isNotification && !row.isConfirm
     // Image/quote/streaming bubbles snap to the cap; plain text shrinks
     // to fit so short replies don't stretch edge-to-edge.
     width: ((msg.image ?? "") !== "" || (msg.replyTo ?? "") !== "" || (msg.state ?? "") === "streaming")
@@ -215,5 +222,74 @@ Item {
     wrapMode: Text.Wrap
     pointSize: Style.fontSizeM
     color: Qt.alpha(Color.mOnSurface, 0.45)
+  }
+
+  // Confirmation card: title + monospace command body + Allow/Deny.
+  // After the user clicks, the buttons disappear and an outcome label
+  // shows in their place so the row remains a permanent audit entry.
+  Rectangle {
+    id: confirmCard
+    visible: row.isConfirm
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.margins: 0
+    implicitHeight: confirmCol.implicitHeight + Style.marginM * 2
+    radius: Style.radiusS
+    color: Color.mSurfaceVariant
+    border.width: 1
+    border.color: {
+      const s = msg.confirmState ?? "pending";
+      if (s === "allowed") return Color.mTertiary;
+      if (s === "denied")  return Color.mError;
+      return Color.mPrimary;
+    }
+    ColumnLayout {
+      id: confirmCol
+      anchors.fill: parent
+      anchors.margins: Style.marginM
+      spacing: Style.marginXS
+      NText {
+        text: msg.confirmTitle ?? row.tr("bubble.confirm-default-title")
+        pointSize: Style.fontSizeM
+        font.bold: true
+        color: Color.mOnSurface
+      }
+      // Body in monospace so a shell command reads as a shell command,
+      // not a paragraph. Selectable so the user can copy before deciding.
+      TextEdit {
+        Layout.fillWidth: true
+        text: msg.text
+        readOnly: true
+        selectByMouse: true
+        wrapMode: Text.Wrap
+        font.family: Settings.data.ui.fontFixed ?? Settings.data.ui.fontDefault
+        font.pointSize: Style.fontSizeS * Settings.data.ui.fontDefaultScale
+        color: Color.mOnSurface
+      }
+      RowLayout {
+        Layout.alignment: Qt.AlignRight
+        spacing: Style.marginS
+        visible: (msg.confirmState ?? "pending") === "pending"
+        Button {
+          text: row.tr("bubble.confirm-deny")
+          onClicked: row.confirmRequested(false)
+        }
+        Button {
+          text: row.tr("bubble.confirm-allow")
+          highlighted: true
+          onClicked: row.confirmRequested(true)
+        }
+      }
+      NText {
+        Layout.alignment: Qt.AlignRight
+        visible: (msg.confirmState ?? "pending") !== "pending"
+        text: (msg.confirmState === "allowed")
+          ? row.tr("bubble.confirm-allowed")
+          : row.tr("bubble.confirm-denied")
+        color: (msg.confirmState === "allowed") ? Color.mTertiary : Color.mError
+        pointSize: Style.fontSizeS
+        font.bold: true
+      }
+    }
   }
 }

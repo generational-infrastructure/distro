@@ -460,7 +460,7 @@ in
         };
       extensions = cfg.extensions // {
         llama-swap-discover = discoverExtension;
-
+        bash-confirm = ./bash-confirm.ts;
       };
 
       # Bind-mount the host socket dir into the container so opencrow
