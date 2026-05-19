@@ -92,6 +92,9 @@ Item {
       // The daemon runs in a container that can't see host paths.
       // Stage the file into the shared attachments dir (bind-mounted
       // into the container) and send the container-side path instead.
+      // cp prints the chosen basename on stdout; stageProc.onExited
+      // turns that into a 'send-file' command. Without this hop the
+      // file picker would silently no-op — the agent never sees it.
       const rmClause = unlink ? ' && rm -f -- "$1"' : "";
       stageProc.command = ["sh", "-c",
         'name="$(date +%s%N)-$(basename "$1")" && ' +
@@ -126,6 +129,25 @@ Item {
       if (i < 0) return;
       arr[i] = Object.assign({}, arr[i], props);
       messages = arr;
+    }
+  }
+
+  // Host-side staging for chat.sendFile. The daemon lives in a
+  // container; sending the host path would yield a 'no such file'
+  // error there. We cp into the bind-mounted attachments dir and
+  // hand the daemon the container-visible path.
+  Process {
+    id: stageProc
+    property string staged: ""
+    stdout: StdioCollector { onStreamFinished: stageProc.staged = text }
+    onExited: (code) => {
+      if (code === 0 && staged) {
+        root.sockSend({ cmd: root.cmd.sendFile, path: root.containerAttachDir + "/" + staged });
+      } else if (code !== 0) {
+        chat.lastError = "attachment staging failed";
+        errorTimer.restart();
+      }
+      staged = "";
     }
   }
 
@@ -226,6 +248,18 @@ Item {
     sock.item.flush();
   }
 
+  // Container paths come back inside file messages because the daemon
+  // lives in a container that only sees the bind-mount target. The
+  // host attachments dir is a symlink to the same inode, so we just
+  // rewrite the prefix for the Image element (file:// needs a path
+  // the host process can stat).
+  function hostPath(p) {
+    if (!p) return "";
+    if (p.indexOf(root.containerAttachDir + "/") === 0)
+      return root.attachDir + p.slice(root.containerAttachDir.length);
+    return p;
+  }
+
   // One NDJSON line from the daemon.
   function recv(raw) {
     let ev;
@@ -247,7 +281,7 @@ Item {
       // ListView. Insert-sort by ts since replay + live can interleave.
       const entry = {
         id: m.id, text: m.content, ts: m.ts * 1000, ack: m.ack,
-        image: m.image || "", replyTo: m.replyTo || "",
+        image: hostPath(m.image), replyTo: m.replyTo || "",
         state: m.state || state.sent, tries: 0,
         from: m.dir === "out" ? "me" : "peer",
         type: m.type || "",
@@ -305,7 +339,7 @@ Item {
       break;
 
     case root.ev.img:
-      chat.patch(ev.target, { image: ev.image });
+      chat.patch(ev.target, { image: hostPath(ev.image) });
       break;
 
     case root.ev.typing:
