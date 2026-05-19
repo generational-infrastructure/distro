@@ -11,7 +11,8 @@
     "attach-image-tooltip": "Adjuntar imagen",
     "attach-image-title": "Adjuntar imagen",
     "time-now": "ahora",
-    "context-hint": "Es posible que la conversación anterior siga en el contexto del agente — escribe para continuar."
+    "context-hint": "Es posible que la conversación anterior siga en el contexto del agente — escribe para continuar.",
+    "reset-tooltip": "Reiniciar conversación (borrar contexto)"
   },
   "bubble": {
     "reply-tooltip": "Responder",

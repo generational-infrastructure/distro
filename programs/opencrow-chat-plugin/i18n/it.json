@@ -11,7 +11,8 @@
     "attach-image-tooltip": "Allega immagine",
     "attach-image-title": "Allega immagine",
     "time-now": "ora",
-    "context-hint": "La conversazione precedente potrebbe essere ancora nel contesto dell'agente — scrivi per continuare."
+    "context-hint": "La conversazione precedente potrebbe essere ancora nel contesto dell'agente — scrivi per continuare.",
+    "reset-tooltip": "Riavvia la conversazione (cancella il contesto)"
   },
   "bubble": {
     "reply-tooltip": "Rispondi",

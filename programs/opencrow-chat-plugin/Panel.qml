@@ -118,6 +118,24 @@ Item {
         baseSize: Style.baseWidgetSize * 0.9
         onClicked: { searchBar.visible = !searchBar.visible; if (searchBar.visible) searchField.forceActiveFocus(); }
       }
+      NIconButton {
+        icon: "rotate"
+        tooltipText: root.tr("panel.reset-tooltip")
+        baseSize: Style.baseWidgetSize * 0.9
+        // Clear the local bubble list first so the panel reflects the
+        // about-to-be-empty agent context without a flash of stale
+        // history; the daemon's "!restart" echo + ack will repopulate
+        // with the two confirmation bubbles. Going through chat.send
+        // (rather than a dedicated wire command) keeps the protocol
+        // unchanged — !restart is already handled server-side.
+        onClicked: {
+          if (!chat) return;
+          chat.messages = [];
+          chat.replyTarget = null;
+          chat.typing = false;
+          chat.send("!restart");
+        }
+      }
       Rectangle {
         id: relayDot
         implicitWidth: 8; implicitHeight: 8; radius: 4

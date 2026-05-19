@@ -11,7 +11,8 @@
     "attach-image-tooltip": "Załącz obraz",
     "attach-image-title": "Załącz obraz",
     "time-now": "teraz",
-    "context-hint": "Wcześniejsza rozmowa może wciąż być w kontekście agenta — pisz, aby kontynuować."
+    "context-hint": "Wcześniejsza rozmowa może wciąż być w kontekście agenta — pisz, aby kontynuować.",
+    "reset-tooltip": "Uruchom rozmowę od nowa (wyczyść kontekst)"
   },
   "bubble": {
     "reply-tooltip": "Odpowiedz",

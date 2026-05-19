@@ -11,7 +11,8 @@
     "attach-image-tooltip": "Afbeelding bijvoegen",
     "attach-image-title": "Afbeelding bijvoegen",
     "time-now": "nu",
-    "context-hint": "Eerder gesprek kan nog in de context van de agent staan — typ om verder te gaan."
+    "context-hint": "Eerder gesprek kan nog in de context van de agent staan — typ om verder te gaan.",
+    "reset-tooltip": "Gesprek herstarten (context wissen)"
   },
   "bubble": {
     "reply-tooltip": "Beantwoorden",
